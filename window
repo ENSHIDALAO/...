@@ -1,0 +1,900 @@
+
+local NovaUI = {}
+NovaUI.__index = NovaUI
+
+-- 缓存系统
+NovaUI.cache = {}
+function NovaUI.load(module)
+    if not NovaUI.cache[module] then
+        NovaUI.cache[module] = require(module)()
+    end
+    return NovaUI.cache[module]
+end
+
+-- 颜色主题系统
+local ColorThemes = {
+    Default = {
+        Primary = Color3.fromHex("#6366F1"),
+        Secondary = Color3.fromHex("#8B5CF6"),
+        Accent = Color3.fromHex("#EC4899"),
+        
+        Background = Color3.fromHex("#0F172A"),
+        Surface = Color3.fromHex("#1E293B"),
+        SurfaceVariant = Color3.fromHex("#334155"),
+        
+        Text = Color3.fromHex("#F8FAFC"),
+        TextSecondary = Color3.fromHex("#94A3B8"),
+        TextDisabled = Color3.fromHex("#64748B"),
+        
+        Success = Color3.fromHex("#10B981"),
+        Warning = Color3.fromHex("#F59E0B"),
+        Error = Color3.fromHex("#EF4444"),
+        Info = Color3.fromHex("#3B82F6"),
+        
+        Border = Color3.fromHex("#334155"),
+        Hover = Color3.fromHex("#475569"),
+        Active = Color3.fromHex("#475569"),
+    },
+    
+    Light = {
+        Primary = Color3.fromHex("#6366F1"),
+        Secondary = Color3.fromHex("#8B5CF6"),
+        Accent = Color3.fromHex("#EC4899"),
+        
+        Background = Color3.fromHex("#FFFFFF"),
+        Surface = Color3.fromHex("#F8FAFC"),
+        SurfaceVariant = Color3.fromHex("#E2E8F0"),
+        
+        Text = Color3.fromHex("#0F172A"),
+        TextSecondary = Color3.fromHex("#475569"),
+        TextDisabled = Color3.fromHex("#94A3B8"),
+        
+        Success = Color3.fromHex("#10B981"),
+        Warning = Color3.fromHex("#F59E0B"),
+        Error = Color3.fromHex("#EF4444"),
+        Info = Color3.fromHex("#3B82F6"),
+        
+        Border = Color3.fromHex("#E2E8F0"),
+        Hover = Color3.fromHex("#F1F5F9"),
+        Active = Color3.fromHex("#E2E8F0"),
+    },
+    
+    Ocean = {
+        Primary = Color3.fromHex("#0EA5E9"),
+        Secondary = Color3.fromHex("#06B6D4"),
+        Accent = Color3.fromHex("#8B5CF6"),
+        
+        Background = Color3.fromHex("#0C4A6E"),
+        Surface = Color3.fromHex("#075985"),
+        SurfaceVariant = Color3.fromHex("#0369A1"),
+        
+        Text = Color3.fromHex("#F0F9FF"),
+        TextSecondary = Color3.fromHex("#BAE6FD"),
+        TextDisabled = Color3.fromHex("#7DD3FC"),
+        
+        Success = Color3.fromHex("#34D399"),
+        Warning = Color3.fromHex("#FBBF24"),
+        Error = Color3.fromHex("#F87171"),
+        Info = Color3.fromHex("#60A5FA"),
+        
+        Border = Color3.fromHex("#0284C7"),
+        Hover = Color3.fromHex("#0369A1"),
+        Active = Color3.fromHex("#0284C7"),
+    }
+}
+
+-- 核心工具模块
+local Core = {}
+function Core:init()
+    local self = {
+        Services = {
+            RunService = game:GetService("RunService"),
+            UserInputService = game:GetService("UserInputService"),
+            TweenService = game:GetService("TweenService"),
+            HttpService = game:GetService("HttpService"),
+        },
+        Theme = ColorThemes.Default,
+        Font = "rbxasset://fonts/families/GothamSSm.json",
+        Signals = {},
+        Objects = {},
+        DefaultProperties = {
+            Frame = {
+                BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+                BorderSizePixel = 0,
+                BackgroundTransparency = 0,
+            },
+            TextLabel = {
+                BackgroundTransparency = 1,
+                TextColor3 = Color3.fromRGB(255, 255, 255),
+                TextSize = 14,
+                Font = Enum.Font.Gotham,
+                Text = "",
+            },
+            TextButton = {
+                BackgroundTransparency = 0,
+                TextColor3 = Color3.fromRGB(255, 255, 255),
+                TextSize = 14,
+                Font = Enum.Font.Gotham,
+                AutoButtonColor = false,
+            },
+            TextBox = {
+                BackgroundTransparency = 0,
+                TextColor3 = Color3.fromRGB(255, 255, 255),
+                TextSize = 14,
+                Font = Enum.Font.Gotham,
+                ClearTextOnFocus = false,
+            },
+            ImageLabel = {
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+            },
+            ScrollingFrame = {
+                BackgroundTransparency = 1,
+                ScrollBarImageTransparency = 1,
+                BorderSizePixel = 0,
+            },
+            UIListLayout = {
+                SortOrder = Enum.SortOrder.LayoutOrder,
+            },
+            UIPadding = {
+                PaddingTop = UDim.new(0, 0),
+                PaddingBottom = UDim.new(0, 0),
+                PaddingLeft = UDim.new(0, 0),
+                PaddingRight = UDim.new(0, 0),
+            },
+        }
+    }
+    
+    -- 创建实例辅助函数
+    function self:Create(className, properties, children)
+        local instance = Instance.new(className)
+        
+        -- 应用默认属性
+        if self.DefaultProperties[className] then
+            for prop, value in pairs(self.DefaultProperties[className]) do
+                instance[prop] = value
+            end
+        end
+        
+        -- 应用自定义属性
+        if properties then
+            for prop, value in pairs(properties) do
+                if prop ~= "ThemeTag" then
+                    instance[prop] = value
+                end
+            end
+        end
+        
+        -- 添加子元素
+        if children then
+            for _, child in pairs(children) do
+                child.Parent = instance
+            end
+        end
+        
+        -- 主题标签处理
+        if properties and properties.ThemeTag then
+            self:ApplyTheme(instance, properties.ThemeTag)
+        end
+        
+        return instance
+    end
+    
+    -- 应用主题
+    function self:ApplyTheme(instance, themeTag)
+        table.insert(self.Objects, {Object = instance, ThemeTag = themeTag})
+        self:UpdateTheme(instance)
+    end
+    
+    function self:UpdateTheme(instance)
+        for _, obj in pairs(self.Objects) do
+            if obj.Object == instance and obj.ThemeTag then
+                for property, themeKey in pairs(obj.ThemeTag) do
+                    if self.Theme[themeKey] then
+                        instance[property] = self.Theme[themeKey]
+                    end
+                end
+            end
+        end
+    end
+    
+    -- 设置主题
+    function self:SetTheme(themeName)
+        if ColorThemes[themeName] then
+            self.Theme = ColorThemes[themeName]
+            for _, obj in pairs(self.Objects) do
+                self:UpdateTheme(obj.Object)
+            end
+        end
+    end
+    
+    -- 补间动画
+    function self:Tween(object, duration, properties, easingStyle, easingDirection)
+        easingStyle = easingStyle or Enum.EasingStyle.Quad
+        easingDirection = easingDirection or Enum.EasingDirection.Out
+        local tweenInfo = TweenInfo.new(duration, easingStyle, easingDirection)
+        local tween = self.Services.TweenService:Create(object, tweenInfo, properties)
+        return tween
+    end
+    
+    -- 添加信号
+    function self:AddSignal(connection, callback)
+        local signal = connection:Connect(callback)
+        table.insert(self.Signals, signal)
+        return signal
+    end
+    
+    -- 创建圆角
+    function self:CreateCorner(radius)
+        local corner = self:Create("UICorner", {
+            CornerRadius = UDim.new(0, radius)
+        })
+        return corner
+    end
+    
+    -- 创建阴影
+    function self:CreateShadow()
+        local shadow = self:Create("ImageLabel", {
+            Name = "Shadow",
+            Image = "rbxassetid://1316045217",
+            ImageColor3 = Color3.fromRGB(0, 0, 0),
+            ImageTransparency = 0.88,
+            ScaleType = Enum.ScaleType.Slice,
+            SliceCenter = Rect.new(10, 10, 118, 118),
+            Size = UDim2.new(1, 20, 1, 20),
+            Position = UDim2.new(0.5, 0, 0.5, 0),
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            BackgroundTransparency = 1,
+            ZIndex = 0,
+        })
+        return shadow
+    end
+    
+    -- 创建按钮
+    function self:CreateButton(text, icon, callback, variant, parent)
+        local button = self:Create("TextButton", {
+            Name = "Button",
+            Size = UDim2.new(0, 120, 0, 40),
+            BackgroundColor3 = self.Theme.Primary,
+            Text = text,
+            TextColor3 = Color3.fromRGB(255, 255, 255),
+            Font = Enum.Font.GothamSemibold,
+            TextSize = 14,
+            Parent = parent,
+        }, {
+            self:CreateCorner(8)
+        })
+        
+        if icon then
+            local iconImage = self:Create("ImageLabel", {
+                Name = "Icon",
+                Image = icon,
+                Size = UDim2.new(0, 16, 0, 16),
+                Position = UDim2.new(0, 12, 0.5, 0),
+                AnchorPoint = Vector2.new(0, 0.5),
+                BackgroundTransparency = 1,
+                ImageColor3 = Color3.fromRGB(255, 255, 255),
+            })
+            iconImage.Parent = button
+            
+            button.TextXAlignment = Enum.TextXAlignment.Left
+            button.PaddingLeft = UDim.new(0, 40)
+        end
+        
+        -- 悬停效果
+        self:AddSignal(button.MouseEnter, function()
+            self:Tween(button, 0.15, {
+                BackgroundColor3 = Color3.fromRGB(
+                    math.floor(self.Theme.Primary.R * 255 * 0.9),
+                    math.floor(self.Theme.Primary.G * 255 * 0.9),
+                    math.floor(self.Theme.Primary.B * 255 * 0.9)
+                )
+            }):Play()
+        end)
+        
+        self:AddSignal(button.MouseLeave, function()
+            self:Tween(button, 0.15, {
+                BackgroundColor3 = self.Theme.Primary
+            }):Play()
+        end)
+        
+        -- 点击效果
+        self:AddSignal(button.MouseButton1Down, function()
+            self:Tween(button, 0.1, {
+                Size = UDim2.new(0, 115, 0, 38)
+            }):Play()
+        end)
+        
+        self:AddSignal(button.MouseButton1Up, function()
+            self:Tween(button, 0.1, {
+                Size = UDim2.new(0, 120, 0, 40)
+            }):Play()
+            if callback then
+                callback()
+            end
+        end)
+        
+        return button
+    end
+    
+    -- 创建输入框
+    function self:CreateInput(placeholder, callback, parent)
+        local inputFrame = self:Create("Frame", {
+            Name = "InputFrame",
+            Size = UDim2.new(0, 200, 0, 40),
+            BackgroundColor3 = self.Theme.Surface,
+            Parent = parent,
+        }, {
+            self:CreateCorner(8)
+        })
+        
+        local textBox = self:Create("TextBox", {
+            Name = "Input",
+            Size = UDim2.new(1, -24, 1, 0),
+            Position = UDim2.new(0, 12, 0, 0),
+            BackgroundTransparency = 1,
+            Text = "",
+            PlaceholderText = placeholder,
+            TextColor3 = self.Theme.Text,
+            PlaceholderColor3 = self.Theme.TextSecondary,
+            Font = Enum.Font.Gotham,
+            TextSize = 14,
+            TextXAlignment = Enum.TextXAlignment.Left,
+        })
+        textBox.Parent = inputFrame
+        
+        -- 边框效果
+        local stroke = self:Create("UIStroke", {
+            Color = self.Theme.Border,
+            Thickness = 1,
+        })
+        stroke.Parent = inputFrame
+        
+        -- 焦点效果
+        self:AddSignal(textBox.Focused, function()
+            self:Tween(stroke, 0.2, {
+                Color = self.Theme.Primary,
+                Thickness = 2
+            }):Play()
+        end)
+        
+        self:AddSignal(textBox.FocusLost, function()
+            self:Tween(stroke, 0.2, {
+                Color = self.Theme.Border,
+                Thickness = 1
+            }):Play()
+            if callback then
+                callback(textBox.Text)
+            end
+        end)
+        
+        return inputFrame
+    end
+    
+    -- 创建切换开关
+    function self:CreateToggle(label, defaultValue, callback, parent)
+        local toggleFrame = self:Create("Frame", {
+            Name = "ToggleFrame",
+            Size = UDim2.new(0, 200, 0, 40),
+            BackgroundTransparency = 1,
+            Parent = parent,
+        })
+        
+        local labelText = self:Create("TextLabel", {
+            Name = "Label",
+            Size = UDim2.new(1, -60, 1, 0),
+            Position = UDim2.new(0, 0, 0, 0),
+            BackgroundTransparency = 1,
+            Text = label,
+            TextColor3 = self.Theme.Text,
+            Font = Enum.Font.Gotham,
+            TextSize = 14,
+            TextXAlignment = Enum.TextXAlignment.Left,
+        })
+        labelText.Parent = toggleFrame
+        
+        local toggleButton = self:Create("TextButton", {
+            Name = "Toggle",
+            Size = UDim2.new(0, 50, 0, 24),
+            Position = UDim2.new(1, -50, 0.5, 0),
+            AnchorPoint = Vector2.new(1, 0.5),
+            BackgroundColor3 = defaultValue and self.Theme.Primary or self.Theme.SurfaceVariant,
+            Text = "",
+        }, {
+            self:CreateCorner(12)
+        })
+        toggleButton.Parent = toggleFrame
+        
+        local toggleKnob = self:Create("Frame", {
+            Name = "Knob",
+            Size = UDim2.new(0, 20, 0, 20),
+            Position = UDim2.new(defaultValue and 1 or 0, defaultValue and -22 or 2, 0.5, 0),
+            AnchorPoint = Vector2.new(defaultValue and 1 or 0, 0.5),
+            BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+        }, {
+            self:CreateCorner(10)
+        })
+        toggleKnob.Parent = toggleButton
+        
+        local state = defaultValue or false
+        
+        -- 切换功能
+        local function toggleState()
+            state = not state
+            
+            self:Tween(toggleButton, 0.2, {
+                BackgroundColor3 = state and self.Theme.Primary or self.Theme.SurfaceVariant
+            }):Play()
+            
+            self:Tween(toggleKnob, 0.2, {
+                Position = UDim2.new(state and 1 or 0, state and -22 or 2, 0.5, 0)
+            }):Play()
+            
+            if callback then
+                callback(state)
+            end
+        end
+        
+        self:AddSignal(toggleButton.MouseButton1Click, toggleState)
+        self:AddSignal(labelText.MouseButton1Click, toggleState)
+        
+        return toggleFrame
+    end
+    
+    -- 创建滑块
+    function self:CreateSlider(label, minValue, maxValue, defaultValue, callback, parent)
+        local sliderFrame = self:Create("Frame", {
+            Name = "SliderFrame",
+            Size = UDim2.new(0, 200, 0, 60),
+            BackgroundTransparency = 1,
+            Parent = parent,
+        })
+        
+        local labelText = self:Create("TextLabel", {
+            Name = "Label",
+            Size = UDim2.new(1, 0, 0, 20),
+            Position = UDim2.new(0, 0, 0, 0),
+            BackgroundTransparency = 1,
+            Text = label,
+            TextColor3 = self.Theme.Text,
+            Font = Enum.Font.Gotham,
+            TextSize = 14,
+            TextXAlignment = Enum.TextXAlignment.Left,
+        })
+        labelText.Parent = sliderFrame
+        
+        local valueText = self:Create("TextLabel", {
+            Name = "Value",
+            Size = UDim2.new(0, 40, 0, 20),
+            Position = UDim2.new(1, -40, 0, 0),
+            BackgroundTransparency = 1,
+            Text = tostring(defaultValue or minValue),
+            TextColor3 = self.Theme.TextSecondary,
+            Font = Enum.Font.Gotham,
+            TextSize = 12,
+            TextXAlignment = Enum.TextXAlignment.Right,
+        })
+        valueText.Parent = sliderFrame
+        
+        local track = self:Create("Frame", {
+            Name = "Track",
+            Size = UDim2.new(1, 0, 0, 4),
+            Position = UDim2.new(0, 0, 1, -20),
+            BackgroundColor3 = self.Theme.SurfaceVariant,
+        }, {
+            self:CreateCorner(2)
+        })
+        track.Parent = sliderFrame
+        
+        local fill = self:Create("Frame", {
+            Name = "Fill",
+            Size = UDim2.new(0, 0, 1, 0),
+            BackgroundColor3 = self.Theme.Primary,
+        }, {
+            self:CreateCorner(2)
+        })
+        fill.Parent = track
+        
+        local thumb = self:Create("Frame", {
+            Name = "Thumb",
+            Size = UDim2.new(0, 16, 0, 16),
+            Position = UDim2.new(0, 0, 0.5, 0),
+            AnchorPoint = Vector2.new(0, 0.5),
+            BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+        }, {
+            self:CreateCorner(8),
+            self:Create("UIStroke", {
+                Color = self.Theme.Primary,
+                Thickness = 2,
+            })
+        })
+        thumb.Parent = track
+        
+        local currentValue = defaultValue or minValue
+        local isDragging = false
+        
+        -- 更新滑块位置
+        local function updateSlider(value)
+            currentValue = math.clamp(value, minValue, maxValue)
+            local percentage = (currentValue - minValue) / (maxValue - minValue)
+            
+            self:Tween(fill, 0.1, {
+                Size = UDim2.new(percentage, 0, 1, 0)
+            }):Play()
+            
+            self:Tween(thumb, 0.1, {
+                Position = UDim2.new(percentage, 0, 0.5, 0)
+            }):Play()
+            
+            valueText.Text = tostring(math.floor(currentValue))
+            
+            if callback then
+                callback(currentValue)
+            end
+        end
+        
+        -- 开始拖动
+        self:AddSignal(thumb.MouseButton1Down, function()
+            isDragging = true
+        end)
+        
+        self:AddSignal(track.MouseButton1Down, function(x, y)
+            local percentage = (x - track.AbsolutePosition.X) / track.AbsoluteSize.X
+            updateSlider(minValue + (maxValue - minValue) * percentage)
+            isDragging = true
+        end)
+        
+        -- 拖动处理
+        self:AddSignal(self.Services.UserInputService.InputChanged, function(input)
+            if isDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                local percentage = (input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X
+                updateSlider(minValue + (maxValue - minValue) * math.clamp(percentage, 0, 1))
+            end
+        end)
+        
+        -- 结束拖动
+        self:AddSignal(self.Services.UserInputService.InputEnded, function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                isDragging = false
+            end
+        end)
+        
+        -- 初始化
+        updateSlider(currentValue)
+        
+        return sliderFrame
+    end
+    
+    return self
+end
+
+-- 窗口模块
+local Window = {}
+function Window:Create(config)
+    local self = setmetatable({
+        Title = config.Title or "NovaUI Window",
+        Size = config.Size or UDim2.new(0, 500, 0, 400),
+        Position = config.Position or UDim2.new(0.5, 0, 0.5, 0),
+        Theme = config.Theme or "Default",
+        Core = Core:init(),
+        Tabs = {},
+        CurrentTab = nil,
+    }, Window)
+    
+    -- 设置主题
+    self.Core:SetTheme(self.Theme)
+    
+    -- 创建主窗口
+    self.Main = self.Core:Create("Frame", {
+        Name = "NovaWindow",
+        Size = self.Size,
+        Position = self.Position,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        BackgroundColor3 = self.Core.Theme.Background,
+        Parent = config.Parent or game.CoreGui,
+    }, {
+        self.Core:CreateCorner(12),
+        self.Core:CreateShadow(),
+        self.Core:Create("UIStroke", {
+            Color = self.Core.Theme.Border,
+            Thickness = 1,
+        })
+    })
+    
+    -- 创建标题栏
+    local titleBar = self.Core:Create("Frame", {
+        Name = "TitleBar",
+        Size = UDim2.new(1, 0, 0, 40),
+        BackgroundColor3 = self.Core.Theme.Surface,
+    }, {
+        self.Core:CreateCorner(12, 12, 0, 0)
+    })
+    titleBar.Parent = self.Main
+    
+    local titleText = self.Core:Create("TextLabel", {
+        Name = "Title",
+        Size = UDim2.new(1, -100, 1, 0),
+        Position = UDim2.new(0, 16, 0, 0),
+        BackgroundTransparency = 1,
+        Text = self.Title,
+        TextColor3 = self.Core.Theme.Text,
+        Font = Enum.Font.GothamSemibold,
+        TextSize = 16,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    })
+    titleText.Parent = titleBar
+    
+    -- 创建关闭按钮
+    local closeButton = self.Core:Create("TextButton", {
+        Name = "CloseButton",
+        Size = UDim2.new(0, 32, 0, 32),
+        Position = UDim2.new(1, -40, 0.5, 0),
+        AnchorPoint = Vector2.new(1, 0.5),
+        BackgroundColor3 = self.Core.Theme.Error,
+        Text = "×",
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        Font = Enum.Font.GothamBold,
+        TextSize = 18,
+    }, {
+        self.Core:CreateCorner(8)
+    })
+    closeButton.Parent = titleBar
+    
+    self.Core:AddSignal(closeButton.MouseButton1Click, function()
+        self:Close()
+    end)
+    
+    -- 创建内容区域
+    local contentFrame = self.Core:Create("Frame", {
+        Name = "Content",
+        Size = UDim2.new(1, -24, 1, -64),
+        Position = UDim2.new(0, 12, 0, 52),
+        BackgroundTransparency = 1,
+    })
+    contentFrame.Parent = self.Main
+    
+    -- 创建标签页容器
+    local tabContainer = self.Core:Create("Frame", {
+        Name = "TabContainer",
+        Size = UDim2.new(1, 0, 0, 40),
+        BackgroundTransparency = 1,
+    })
+    tabContainer.Parent = contentFrame
+    
+    local tabContent = self.Core:Create("Frame", {
+        Name = "TabContent",
+        Size = UDim2.new(1, 0, 1, -50),
+        Position = UDim2.new(0, 0, 0, 50),
+        BackgroundTransparency = 1,
+    })
+    tabContent.Parent = contentFrame
+    
+    self.TabContainer = tabContainer
+    self.TabContent = tabContent
+    
+    -- 窗口方法
+    function self:AddTab(name, icon)
+        local tabId = #self.Tabs + 1
+        
+        local tabButton = self.Core:Create("TextButton", {
+            Name = "Tab" .. tabId,
+            Size = UDim2.new(0, 100, 1, 0),
+            Position = UDim2.new(0, (#self.Tabs * 110), 0, 0),
+            BackgroundColor3 = tabId == 1 and self.Core.Theme.Primary or self.Core.Theme.SurfaceVariant,
+            Text = name,
+            TextColor3 = tabId == 1 and Color3.fromRGB(255, 255, 255) or self.Core.Theme.Text,
+            Font = Enum.Font.GothamSemibold,
+            TextSize = 14,
+        }, {
+            self.Core:CreateCorner(8, 8, 0, 0)
+        })
+        tabButton.Parent = self.TabContainer
+        
+        local tabContentFrame = self.Core:Create("ScrollingFrame", {
+            Name = "TabContent" .. tabId,
+            Size = UDim2.new(1, 0, 1, 0),
+            BackgroundTransparency = 1,
+            ScrollBarThickness = 0,
+            Visible = tabId == 1,
+            CanvasSize = UDim2.new(0, 0, 0, 0),
+            AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        }, {
+            self.Core:Create("UIListLayout", {
+                SortOrder = Enum.SortOrder.LayoutOrder,
+                Padding = UDim.new(0, 8),
+            }),
+            self.Core:Create("UIPadding", {
+                PaddingTop = UDim.new(0, 8),
+                PaddingLeft = UDim.new(0, 8),
+                PaddingRight = UDim.new(0, 8),
+                PaddingBottom = UDim.new(0, 8),
+            })
+        })
+        tabContentFrame.Parent = self.TabContent
+        
+        -- 标签切换逻辑
+        self.Core:AddSignal(tabButton.MouseButton1Click, function()
+            for i, tab in pairs(self.Tabs) do
+                if i == tabId then
+                    self.Core:Tween(tab.Button, 0.2, {
+                        BackgroundColor3 = self.Core.Theme.Primary,
+                        TextColor3 = Color3.fromRGB(255, 255, 255)
+                    }):Play()
+                    tab.Content.Visible = true
+                else
+                    self.Core:Tween(tab.Button, 0.2, {
+                        BackgroundColor3 = self.Core.Theme.SurfaceVariant,
+                        TextColor3 = self.Core.Theme.Text
+                    }):Play()
+                    tab.Content.Visible = false
+                end
+            end
+            self.CurrentTab = tabId
+        end)
+        
+        local tab = {
+            Name = name,
+            Button = tabButton,
+            Content = tabContentFrame,
+            Elements = {}
+        }
+        
+        table.insert(self.Tabs, tab)
+        
+        if #self.Tabs == 1 then
+            self.CurrentTab = 1
+        end
+        
+        return tab.Content
+    end
+    
+    function self:Button(text, callback, tabContent)
+        return self.Core:CreateButton(text, nil, callback, "Primary", tabContent)
+    end
+    
+    function self:Input(placeholder, callback, tabContent)
+        return self.Core:CreateInput(placeholder, callback, tabContent)
+    end
+    
+    function self:Toggle(label, defaultValue, callback, tabContent)
+        return self.Core:CreateToggle(label, defaultValue, callback, tabContent)
+    end
+    
+    function self:Slider(label, minValue, maxValue, defaultValue, callback, tabContent)
+        return self.Core:CreateSlider(label, minValue, maxValue, defaultValue, callback, tabContent)
+    end
+    
+    function self:Label(text, tabContent)
+        local label = self.Core:Create("TextLabel", {
+            Name = "Label",
+            Size = UDim2.new(1, 0, 0, 24),
+            BackgroundTransparency = 1,
+            Text = text,
+            TextColor3 = self.Core.Theme.Text,
+            Font = Enum.Font.GothamSemibold,
+            TextSize = 16,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Parent = tabContent,
+        })
+        return label
+    end
+    
+    function self:Divider(tabContent)
+        local divider = self.Core:Create("Frame", {
+            Name = "Divider",
+            Size = UDim2.new(1, 0, 0, 1),
+            BackgroundColor3 = self.Core.Theme.Border,
+            Parent = tabContent,
+        })
+        return divider
+    end
+    
+    function self:SetTitle(title)
+        self.Title = title
+        titleText.Text = title
+    end
+    
+    function self:SetTheme(themeName)
+        self.Theme = themeName
+        self.Core:SetTheme(themeName)
+        
+        -- 更新窗口颜色
+        self.Main.BackgroundColor3 = self.Core.Theme.Background
+        titleBar.BackgroundColor3 = self.Core.Theme.Surface
+        titleText.TextColor3 = self.Core.Theme.Text
+        
+        -- 更新标签按钮颜色
+        for i, tab in pairs(self.Tabs) do
+            if i == self.CurrentTab then
+                tab.Button.BackgroundColor3 = self.Core.Theme.Primary
+                tab.Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+            else
+                tab.Button.BackgroundColor3 = self.Core.Theme.SurfaceVariant
+                tab.Button.TextColor3 = self.Core.Theme.Text
+            end
+        end
+    end
+    
+    function self:SetPosition(position)
+        self.Position = position
+        self.Main.Position = position
+    end
+    
+    function self:SetSize(size)
+        self.Size = size
+        self.Main.Size = size
+    end
+    
+    function self:Show()
+        self.Main.Visible = true
+    end
+    
+    function self:Hide()
+        self.Main.Visible = false
+    end
+    
+    function self:Close()
+        self.Main:Destroy()
+        self = nil
+    end
+    
+    function self:ToggleVisibility()
+        self.Main.Visible = not self.Main.Visible
+    end
+    
+    -- 添加可拖动功能
+    local isDragging = false
+    local dragStart
+    local startPos
+    
+    self.Core:AddSignal(titleBar.MouseButton1Down, function()
+        isDragging = true
+        dragStart = self.Core.Services.UserInputService:GetMouseLocation()
+        startPos = self.Main.Position
+    end)
+    
+    self.Core:AddSignal(self.Core.Services.UserInputService.InputChanged, function(input)
+        if isDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = self.Core.Services.UserInputService:GetMouseLocation() - dragStart
+            self.Main.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+    
+    self.Core:AddSignal(self.Core.Services.UserInputService.InputEnded, function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            isDragging = false
+        end
+    end)
+    
+    return self
+end
+
+-- NovaUI 主接口
+function NovaUI:CreateWindow(config)
+    return Window:Create(config)
+end
+
+function NovaUI:SetTheme(themeName)
+    if ColorThemes[themeName] then
+        for _, module in pairs(NovaUI.cache) do
+            if module.SetTheme then
+                module:SetTheme(themeName)
+            end
+        end
+    end
+end
+
+function NovaUI:GetThemes()
+    local themes = {}
+    for name, _ in pairs(ColorThemes) do
+        table.insert(themes, name)
+    end
+    return themes
+end
+
+return NovaUI
