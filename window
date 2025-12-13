@@ -1,7 +1,7 @@
 --[[
     NovaUI - Modern Roblox UI Library
-    Version: 1.0.0
-    Author: YourName
+    Version: 1.1.0
+    Author: NovaUI Team
     Description: A clean, modern UI library with full functionality
 ]]
 
@@ -100,166 +100,132 @@ local DesignSystem = {
     }
 }
 
--- 图标系统（备选方案，如果外部图标库不可用）
-local Icons = {}
-do
-    -- 创建备选图标系统
-    local fallbackIcons = {
-        ["x"] = "rbxassetid://6031094678",
-        ["chevron-down"] = "rbxassetid://6031094678",
-        ["maximize-2"] = "rbxassetid://6031094678",
-        ["settings"] = "rbxassetid://6031094678",
-        ["home"] = "rbxassetid://6031094678",
-        ["user"] = "rbxassetid://6031094678",
-        ["info"] = "rbxassetid://6031094678",
-        ["bell"] = "rbxassetid://6031094678",
-        ["search"] = "rbxassetid://6031094678"
+-- 图标系统（使用本地图标）
+local Icons = {
+    Assets = {
+        ["x"] = "rbxassetid://3926307971",
+        ["chevron-down"] = "rbxassetid://3926305904",
+        ["maximize-2"] = "rbxassetid://3926307971",
+        ["settings"] = "rbxassetid://3926305904",
+        ["home"] = "rbxassetid://3926305904",
+        ["user"] = "rbxassetid://3926305904",
+        ["info"] = "rbxassetid://3926305904",
+        ["bell"] = "rbxassetid://3926305904",
+        ["search"] = "rbxassetid://3926305904"
     }
-    
-    function Icons.Get(iconName)
-        return fallbackIcons[iconName] or "rbxassetid://6031094678"
-    end
-    
-    function Icons.Image(iconName, color, size)
-        local iconUrl = Icons.Get(iconName)
-        
-        local imageLabel = Instance.new("ImageLabel")
-        imageLabel.Image = iconUrl
-        imageLabel.BackgroundTransparency = 1
-        imageLabel.Size = size or UDim2.new(0, 20, 0, 20)
-        imageLabel.ImageColor3 = color or DesignSystem.Colors.Gray["600"]
-        imageLabel.ScaleType = Enum.ScaleType.Fit
-        
-        return imageLabel
-    end
+}
+
+function Icons.Get(iconName)
+    return Icons.Assets[iconName] or "rbxassetid://3926307971"
 end
 
--- 尝试加载外部图标库（如果可用）
-local success, iconLib = pcall(function()
-    local iconData = game:HttpGet("https://raw.githubusercontent.com/Footagesus/Icons/main/Main-v2.lua", true)
-    local loadedLib = loadstring(iconData)()
-    if loadedLib and loadedLib.Icon2 then
-        loadedLib.SetIconsType("lucide")
-        return loadedLib
-    end
-    return nil
-end)
-
-if success and iconLib then
-    -- 使用外部图标库
-    function Icons.Get(iconName, size)
-        local result = iconLib.Icon2(iconName, nil, size ~= false)
-        if result and type(result) == "table" then
-            return result
-        end
-        return nil
-    end
+function Icons.Image(iconName, color, size)
+    local iconUrl = Icons.Get(iconName)
     
-    function Icons.Image(iconName, color, size)
-        local iconData = Icons.Get(iconName)
-        if not iconData then 
-            return Instance.new("ImageLabel")
-        end
-        
-        local imageLabel = Instance.new("ImageLabel")
-        imageLabel.Image = iconData[1]
-        if iconData[2] then
-            imageLabel.ImageRectSize = iconData[2].ImageRectSize or Vector2.new(0, 0)
-            imageLabel.ImageRectOffset = iconData[2].ImageRectPosition or Vector2.new(0, 0)
-        end
-        imageLabel.BackgroundTransparency = 1
-        imageLabel.Size = size or UDim2.new(0, 20, 0, 20)
-        imageLabel.ImageColor3 = color or DesignSystem.Colors.Gray["600"]
-        
-        return imageLabel
-    end
+    local imageLabel = Instance.new("ImageLabel")
+    imageLabel.Image = iconUrl
+    imageLabel.BackgroundTransparency = 1
+    imageLabel.Size = size or UDim2.new(0, 20, 0, 20)
+    imageLabel.ImageColor3 = color or DesignSystem.Colors.Gray["600"]
+    imageLabel.ScaleType = Enum.ScaleType.Fit
+    imageLabel.ImageRectSize = Vector2.new(36, 36) -- 标准图标尺寸
+    
+    return imageLabel
 end
 
 -- 工具函数
 local Utils = {}
-do
-    function Utils.Tween(object, properties, duration, easingStyle, easingDirection, callback)
-        easingStyle = easingStyle or Enum.EasingStyle.Quad
-        easingDirection = easingDirection or Enum.EasingDirection.Out
-        duration = duration or 0.2
-        
-        local tweenInfo = TweenInfo.new(duration, easingStyle, easingDirection)
-        local tween = Services.TweenService:Create(object, tweenInfo, properties)
-        tween:Play()
-        
-        if callback then
-            tween.Completed:Connect(callback)
-        end
-        return tween
-    end
+
+function Utils.Tween(object, properties, duration, easingStyle, easingDirection, callback)
+    easingStyle = easingStyle or Enum.EasingStyle.Quad
+    easingDirection = easingDirection or Enum.EasingDirection.Out
+    duration = duration or 0.2
     
-    function Utils.Create(class, properties, children)
-        local instance = Instance.new(class)
-        
-        for prop, value in pairs(properties or {}) do
-            if prop ~= "ThemeTag" then
-                if pcall(function()
-                    instance[prop] = value
-                end) then
-                    -- 属性设置成功
-                end
+    local tweenInfo = TweenInfo.new(duration, easingStyle, easingDirection)
+    local tween = Services.TweenService:Create(object, tweenInfo, properties)
+    tween:Play()
+    
+    if callback then
+        tween.Completed:Connect(callback)
+    end
+    return tween
+end
+
+function Utils.Create(class, properties, children)
+    local instance = Instance.new(class)
+    
+    for prop, value in pairs(properties or {}) do
+        if prop ~= "ThemeTag" and prop ~= "Parent" then
+            local success = pcall(function()
+                instance[prop] = value
+            end)
+            if not success then
+                warn(`Failed to set property {prop} on {class}`)
             end
         end
-        
-        if children then
-            for _, child in ipairs(children) do
-                if child then
-                    child.Parent = instance
-                end
-            end
-        end
-        
-        return instance
     end
     
-    function Utils.RoundFrame(radius, properties, children)
-        local frame = Utils.Create("Frame", {
-            BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 1, 0)
-        })
-        
-        if radius > 0 then
-            local corner = Utils.Create("UICorner")
-            corner.CornerRadius = UDim.new(0, radius)
-            corner.Parent = frame
-        end
-        
-        for prop, value in pairs(properties or {}) do
-            if prop ~= "ThemeTag" then
-                if pcall(function()
-                    frame[prop] = value
-                end) then
-                    -- 属性设置成功
-                end
+    if children then
+        for _, child in ipairs(children) do
+            if child then
+                child.Parent = instance
             end
         end
-        
-        if children then
-            for _, child in ipairs(children) do
-                if child then
-                    child.Parent = frame
-                end
+    end
+    
+    return instance
+end
+
+function Utils.RoundFrame(radius, properties, children)
+    local frame = Utils.Create("Frame", {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 1, 0)
+    })
+    
+    if radius and radius > 0 and radius ~= DesignSystem.Radius.Full then
+        local corner = Utils.Create("UICorner")
+        corner.CornerRadius = UDim.new(0, radius)
+        corner.Parent = frame
+    elseif radius == DesignSystem.Radius.Full then
+        local corner = Utils.Create("UICorner")
+        corner.CornerRadius = UDim.new(1, 0)
+        corner.Parent = frame
+    end
+    
+    for prop, value in pairs(properties or {}) do
+        if prop ~= "ThemeTag" and prop ~= "Parent" then
+            local success = pcall(function()
+                frame[prop] = value
+            end)
+            if not success then
+                warn(`Failed to set property {prop} on RoundFrame`)
             end
         end
-        
-        return frame
     end
     
-    function Utils.AddSignal(connection, callback)
-        if connection and typeof(callback) == "function" then
-            return connection:Connect(callback)
+    if children then
+        for _, child in ipairs(children) do
+            if child then
+                child.Parent = frame
+            end
         end
-        return nil
     end
     
-    function Utils.CreateFont(weight)
-        return Enum.Font.SourceSans
+    return frame
+end
+
+function Utils.AddSignal(signal, callback)
+    if signal and typeof(callback) == "function" then
+        return signal:Connect(callback)
     end
+    return nil
+end
+
+function Utils.SafeConnect(object, eventName, callback)
+    if object and object[eventName] and typeof(callback) == "function" then
+        return object[eventName]:Connect(callback)
+    end
+    return nil
 end
 
 -- 主题系统
@@ -327,24 +293,26 @@ function NovaUI:CreateWindow(config)
         Draggable = config.Draggable or true,
         MinSize = config.MinSize or Vector2.new(400, 300),
         MaxSize = config.MaxSize or Vector2.new(1200, 800),
+        Parent = config.Parent or PlayerGui,
         
         UIElements = {},
         Tabs = {},
         CurrentTab = nil,
-        IsOpen = true
+        IsOpen = true,
+        Connections = {}
     }
+    
+    -- 应用主题
+    ThemeSystem.Current = Window.Theme
+    local theme = ThemeSystem.Themes[Window.Theme] or ThemeSystem.Themes["Dark"]
     
     -- 创建主窗口容器
     Window.Container = Utils.Create("ScreenGui", {
         Name = "NovaWindow",
         ResetOnSpawn = false,
         ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-        Parent = config.Parent or PlayerGui
+        Parent = Window.Parent
     })
-    
-    -- 应用主题
-    ThemeSystem.Current = Window.Theme
-    local theme = ThemeSystem.Themes[Window.Theme]
     
     -- 创建窗口框架
     Window.MainFrame = Utils.Create("Frame", {
@@ -369,11 +337,11 @@ function NovaUI:CreateWindow(config)
     local shadow = Utils.Create("ImageLabel", {
         Name = "Shadow",
         Image = "rbxassetid://5554236805",
-        ImageTransparency = DesignSystem.Shadows.Medium.Transparency,
+        ImageTransparency = 0.7,
         ScaleType = Enum.ScaleType.Slice,
         SliceCenter = Rect.new(23, 23, 277, 277),
-        Size = DesignSystem.Shadows.Medium.Size,
-        Position = DesignSystem.Shadows.Medium.Position,
+        Size = UDim2.new(1, 10, 1, 10),
+        Position = UDim2.new(0, -5, 0, -5),
         BackgroundTransparency = 1,
         Parent = Window.MainFrame,
         ZIndex = -1
@@ -390,6 +358,7 @@ function NovaUI:CreateWindow(config)
     
     -- 圆角只应用于顶部
     local titleCorner = Utils.Create("UICorner", {
+        CornerRadius = UDim.new(0, DesignSystem.Radius.LG),
         CornerRadius = UDim.new(0, DesignSystem.Radius.LG)
     })
     titleCorner.Parent = Window.TitleBar
@@ -475,7 +444,7 @@ function NovaUI:CreateWindow(config)
         local dragging = false
         local dragStart, startPos
         
-        Utils.AddSignal(Window.TitleBar.InputBegan, function(input)
+        table.insert(Window.Connections, Utils.SafeConnect(Window.TitleBar, "InputBegan", function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 dragging = true
                 dragStart = input.Position
@@ -485,23 +454,23 @@ function NovaUI:CreateWindow(config)
                     Position = startPos + UDim2.new(0, 0, 0, -2)
                 }, 0.1)
             end
-        end)
+        end))
         
-        Utils.AddSignal(Services.UserInputService.InputChanged, function(input)
+        table.insert(Window.Connections, Utils.SafeConnect(Services.UserInputService, "InputChanged", function(input)
             if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
                 local delta = input.Position - dragStart
                 Window.MainFrame.Position = startPos + UDim2.new(0, delta.X, 0, delta.Y)
             end
-        end)
+        end))
         
-        Utils.AddSignal(Services.UserInputService.InputEnded, function(input)
+        table.insert(Window.Connections, Utils.SafeConnect(Services.UserInputService, "InputEnded", function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 dragging = false
                 Utils.Tween(Window.MainFrame, {
                     Position = Window.MainFrame.Position + UDim2.new(0, 0, 0, 2)
                 }, 0.1)
             end
-        end)
+        end))
     end
     
     -- 调整大小功能
@@ -523,15 +492,15 @@ function NovaUI:CreateWindow(config)
         resizeIcon.AnchorPoint = Vector2.new(0.5, 0.5)
         resizeIcon.Parent = resizeHandle
         
-        Utils.AddSignal(resizeHandle.InputBegan, function(input)
+        table.insert(Window.Connections, Utils.SafeConnect(resizeHandle, "InputBegan", function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 resizing = true
                 resizeStart = input.Position
                 startSize = Window.MainFrame.Size
             end
-        end)
+        end))
         
-        Utils.AddSignal(Services.UserInputService.InputChanged, function(input)
+        table.insert(Window.Connections, Utils.SafeConnect(Services.UserInputService, "InputChanged", function(input)
             if resizing and input.UserInputType == Enum.UserInputType.MouseMovement then
                 local delta = input.Position - resizeStart
                 local newSize = startSize + UDim2.new(0, delta.X, 0, delta.Y)
@@ -546,13 +515,13 @@ function NovaUI:CreateWindow(config)
                 
                 Window.MainFrame.Size = newSize
             end
-        end)
+        end))
         
-        Utils.AddSignal(Services.UserInputService.InputEnded, function(input)
+        table.insert(Window.Connections, Utils.SafeConnect(Services.UserInputService, "InputEnded", function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 resizing = false
             end
-        end)
+        end))
     end
     
     -- 标签页管理
@@ -650,28 +619,28 @@ function NovaUI:CreateWindow(config)
         pagePadding.Parent = Tab.Page
         
         -- 标签点击事件
-        Utils.AddSignal(tabButton.InputBegan, function(input)
+        table.insert(Window.Connections, Utils.SafeConnect(tabButton, "InputBegan", function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 Window:SelectTab(Tab.Name)
             end
-        end)
+        end))
         
         -- 悬停效果
-        Utils.AddSignal(tabButton.MouseEnter, function()
+        table.insert(Window.Connections, Utils.SafeConnect(tabButton, "MouseEnter", function()
             if not Tab.IsActive then
                 Utils.Tween(tabButton, {
                     BackgroundColor3 = theme.Divider
                 }, 0.1)
             end
-        end)
+        end))
         
-        Utils.AddSignal(tabButton.MouseLeave, function()
+        table.insert(Window.Connections, Utils.SafeConnect(tabButton, "MouseLeave", function()
             if not Tab.IsActive then
                 Utils.Tween(tabButton, {
                     BackgroundColor3 = theme.Background
                 }, 0.1)
             end
-        end)
+        end))
         
         -- 添加到窗口
         Window.Tabs[Tab.Name] = Tab
@@ -685,7 +654,7 @@ function NovaUI:CreateWindow(config)
     end
     
     function Window:SelectTab(tabName)
-        local theme = ThemeSystem.Themes[Window.Theme]
+        local theme = ThemeSystem.Themes[Window.Theme] or ThemeSystem.Themes["Dark"]
         
         -- 取消选择所有标签
         for name, tab in pairs(Window.Tabs) do
@@ -698,14 +667,14 @@ function NovaUI:CreateWindow(config)
                         BackgroundColor3 = theme.Background
                     }, 0.1)
                     
-                    local label = tab.Button.Content:FindFirstChild("Label")
+                    local label = tab.Button:FindFirstChild("Content") and tab.Button.Content:FindFirstChild("Label")
                     if label then
                         Utils.Tween(label, {
                             TextColor3 = theme.Text.Secondary
                         }, 0.1)
                     end
                     
-                    local icon = tab.Button.Content:FindFirstChildWhichIsA("ImageLabel")
+                    local icon = tab.Button.Content and tab.Button.Content:FindFirstChildWhichIsA("ImageLabel")
                     if icon then
                         Utils.Tween(icon, {
                             ImageColor3 = theme.Text.Secondary
@@ -727,14 +696,14 @@ function NovaUI:CreateWindow(config)
                     BackgroundColor3 = theme.Primary
                 }, 0.1)
                 
-                local label = selectedTab.Button.Content:FindFirstChild("Label")
+                local label = selectedTab.Button:FindFirstChild("Content") and selectedTab.Button.Content:FindFirstChild("Label")
                 if label then
                     Utils.Tween(label, {
                         TextColor3 = theme.Text.Inverse
                     }, 0.1)
                 end
                 
-                local icon = selectedTab.Button.Content:FindFirstChildWhichIsA("ImageLabel")
+                local icon = selectedTab.Button.Content and selectedTab.Button.Content:FindFirstChildWhichIsA("ImageLabel")
                 if icon then
                     Utils.Tween(icon, {
                         ImageColor3 = theme.Text.Inverse
@@ -758,7 +727,7 @@ function NovaUI:CreateWindow(config)
             Order = config.Order or 1
         }
         
-        local theme = ThemeSystem.Themes[Window.Theme]
+        local theme = ThemeSystem.Themes[Window.Theme] or ThemeSystem.Themes["Dark"]
         local colorMap = {
             Primary = theme.Primary,
             Secondary = DesignSystem.Colors.Secondary,
@@ -779,15 +748,15 @@ function NovaUI:CreateWindow(config)
             Half = UDim2.new(0.5, -DesignSystem.Spacing.SM, 0, sizeMap[Button.Size].Height)
         }
         
-        local size = sizeMap[Button.Size]
+        local size = sizeMap[Button.Size] or sizeMap.Medium
         
         local buttonFrame = Utils.RoundFrame(DesignSystem.Radius.MD, {
             Name = "Button_" .. Button.Text,
-            Size = widthMap[Button.Width],
-            BackgroundColor3 = colorMap[Button.Color],
+            Size = widthMap[Button.Width] or widthMap.Full,
+            BackgroundColor3 = colorMap[Button.Color] or theme.Primary,
             Parent = Window.CurrentTab and Window.CurrentTab.Page,
             LayoutOrder = Button.Order,
-            AutomaticSize = Button.Width == "Auto" and Enum.AutomaticSize.X or Enum.AutomaticSize.None
+            AutomaticSize = (Button.Width == "Auto") and Enum.AutomaticSize.X or Enum.AutomaticSize.None
         })
         
         local buttonCorner = Utils.Create("UICorner", {
@@ -797,7 +766,7 @@ function NovaUI:CreateWindow(config)
         
         local buttonStroke = Utils.Create("UIStroke", {
             Thickness = 1,
-            Color = colorMap[Button.Color]:Lerp(Color3.new(0, 0, 0), 0.2),
+            Color = (colorMap[Button.Color] or theme.Primary):Lerp(Color3.new(0, 0, 0), 0.2),
             Transparency = 0.5
         })
         buttonStroke.Parent = buttonFrame
@@ -848,25 +817,25 @@ function NovaUI:CreateWindow(config)
         -- 悬停效果
         local originalColor = buttonFrame.BackgroundColor3
         
-        Utils.AddSignal(textButton.MouseEnter, function()
+        table.insert(Window.Connections, Utils.SafeConnect(textButton, "MouseEnter", function()
             Utils.Tween(buttonFrame, {
                 BackgroundColor3 = originalColor:Lerp(Color3.new(1, 1, 1), 0.1)
             }, 0.1)
-        end)
+        end))
         
-        Utils.AddSignal(textButton.MouseLeave, function()
+        table.insert(Window.Connections, Utils.SafeConnect(textButton, "MouseLeave", function()
             Utils.Tween(buttonFrame, {
                 BackgroundColor3 = originalColor
             }, 0.1)
-        end)
+        end))
         
-        Utils.AddSignal(textButton.MouseButton1Down, function()
+        table.insert(Window.Connections, Utils.SafeConnect(textButton, "MouseButton1Down", function()
             Utils.Tween(buttonFrame, {
                 BackgroundColor3 = originalColor:Lerp(Color3.new(0, 0, 0), 0.1)
             }, 0.05)
-        end)
+        end))
         
-        Utils.AddSignal(textButton.MouseButton1Up, function()
+        table.insert(Window.Connections, Utils.SafeConnect(textButton, "MouseButton1Up", function()
             Utils.Tween(buttonFrame, {
                 BackgroundColor3 = originalColor:Lerp(Color3.new(1, 1, 1), 0.1)
             }, 0.1)
@@ -875,10 +844,10 @@ function NovaUI:CreateWindow(config)
             if Button.OnClick then
                 Button.OnClick()
             end
-        end)
+        end))
         
         if Button.Width == "Auto" then
-            Utils.AddSignal(buttonLabel:GetPropertyChangedSignal("TextBounds"), function()
+            table.insert(Window.Connections, Utils.SafeConnect(buttonLabel, "GetPropertyChangedSignal", function()
                 local width = buttonLabel.TextBounds.X + size.Padding * 2
                 if Button.Icon then
                     local icon = buttonContent:FindFirstChildWhichIsA("ImageLabel")
@@ -888,7 +857,7 @@ function NovaUI:CreateWindow(config)
                 end
                 
                 buttonFrame.Size = UDim2.new(0, width, 0, size.Height)
-            end)
+            end))
         end
         
         return buttonFrame
@@ -904,7 +873,7 @@ function NovaUI:CreateWindow(config)
             Order = config.Order or 1
         }
         
-        local theme = ThemeSystem.Themes[Window.Theme]
+        local theme = ThemeSystem.Themes[Window.Theme] or ThemeSystem.Themes["Dark"]
         local isToggled = Toggle.Default
         
         local toggleFrame = Utils.Create("Frame", {
@@ -998,14 +967,14 @@ function NovaUI:CreateWindow(config)
         updateToggle()
         
         -- 点击事件
-        Utils.AddSignal(toggleButton.MouseButton1Click, function()
+        table.insert(Window.Connections, Utils.SafeConnect(toggleButton, "MouseButton1Click", function()
             isToggled = not isToggled
             updateToggle()
             
             if Toggle.OnToggle then
                 Toggle.OnToggle(isToggled)
             end
-        end)
+        end))
         
         return toggleFrame
     end
@@ -1023,7 +992,7 @@ function NovaUI:CreateWindow(config)
             Order = config.Order or 1
         }
         
-        local theme = ThemeSystem.Themes[Window.Theme]
+        local theme = ThemeSystem.Themes[Window.Theme] or ThemeSystem.Themes["Dark"]
         local currentValue = Slider.Default
         
         local sliderFrame = Utils.Create("Frame", {
@@ -1145,24 +1114,24 @@ function NovaUI:CreateWindow(config)
             end
         end
         
-        Utils.AddSignal(track.InputBegan, function(input)
+        table.insert(Window.Connections, Utils.SafeConnect(track, "InputBegan", function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 dragging = true
                 updateSlider(input.Position.X)
             end
-        end)
+        end))
         
-        Utils.AddSignal(Services.UserInputService.InputChanged, function(input)
+        table.insert(Window.Connections, Utils.SafeConnect(Services.UserInputService, "InputChanged", function(input)
             if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
                 updateSlider(input.Position.X)
             end
-        end)
+        end))
         
-        Utils.AddSignal(Services.UserInputService.InputEnded, function(input)
+        table.insert(Window.Connections, Utils.SafeConnect(Services.UserInputService, "InputEnded", function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 dragging = false
             end
-        end)
+        end))
         
         return sliderFrame
     end
@@ -1178,9 +1147,9 @@ function NovaUI:CreateWindow(config)
             Order = config.Order or 1
         }
         
-        local theme = ThemeSystem.Themes[Window.Theme]
+        local theme = ThemeSystem.Themes[Window.Theme] or ThemeSystem.Themes["Dark"]
         local isOpen = false
-        local selectedIndex = Dropdown.Default
+        local selectedIndex = math.clamp(Dropdown.Default, 1, #Dropdown.Options)
         local selectedOption = Dropdown.Options[selectedIndex]
         
         local dropdownFrame = Utils.Create("Frame", {
@@ -1337,20 +1306,20 @@ function NovaUI:CreateWindow(config)
                 optionButton.Parent = optionsList
                 
                 -- 悬停效果
-                Utils.AddSignal(optionButton.MouseEnter, function()
+                table.insert(Window.Connections, Utils.SafeConnect(optionButton, "MouseEnter", function()
                     Utils.Tween(optionFrame, {
                         BackgroundColor3 = theme.Divider
                     }, 0.1)
-                end)
+                end))
                 
-                Utils.AddSignal(optionButton.MouseLeave, function()
+                table.insert(Window.Connections, Utils.SafeConnect(optionButton, "MouseLeave", function()
                     Utils.Tween(optionFrame, {
                         BackgroundColor3 = theme.Surface
                     }, 0.1)
-                end)
+                end))
                 
                 -- 选择事件
-                Utils.AddSignal(optionButton.MouseButton1Click, function()
+                table.insert(Window.Connections, Utils.SafeConnect(optionButton, "MouseButton1Click", function()
                     selectedIndex = i
                     selectedOption = option
                     
@@ -1360,7 +1329,7 @@ function NovaUI:CreateWindow(config)
                     if Dropdown.OnSelect then
                         Dropdown.OnSelect(option, i)
                     end
-                end)
+                end))
             end
         end
         
@@ -1393,9 +1362,9 @@ function NovaUI:CreateWindow(config)
         end
         
         -- 按钮点击事件
-        Utils.AddSignal(dropdownButton.MouseButton1Click, function()
+        table.insert(Window.Connections, Utils.SafeConnect(dropdownButton, "MouseButton1Click", function()
             toggleMenu()
-        end)
+        end))
         
         -- 点击外部关闭
         local connection
@@ -1412,6 +1381,8 @@ function NovaUI:CreateWindow(config)
             end
         end)
         
+        table.insert(Window.Connections, connection)
+        
         return dropdownFrame
     end
     
@@ -1426,7 +1397,7 @@ function NovaUI:CreateWindow(config)
             Order = config.Order or 1
         }
         
-        local theme = ThemeSystem.Themes[Window.Theme]
+        local theme = ThemeSystem.Themes[Window.Theme] or ThemeSystem.Themes["Dark"]
         local currentText = Input.Default
         
         local inputFrame = Utils.Create("Frame", {
@@ -1449,29 +1420,21 @@ function NovaUI:CreateWindow(config)
         })
         inputLabel.Parent = inputFrame
         
-        local textBox = Utils.Create("TextBox", {
-            Name = "InputField",
+        local inputContainer = Utils.Create("Frame", {
+            Name = "InputContainer",
             Size = UDim2.new(1, 0, 0, 40),
             Position = UDim2.new(0, 0, 0, 24),
-            BackgroundTransparency = 1,
-            Text = currentText,
-            PlaceholderText = Input.Placeholder,
-            TextColor3 = theme.Text.Primary,
-            PlaceholderColor3 = theme.Text.Disabled,
-            TextSize = DesignSystem.Typography.Sizes.Body,
-            Font = DesignSystem.Typography.Font,
-            ClearTextOnFocus = false
+            BackgroundTransparency = 1
         })
-        textBox.Parent = inputFrame
+        inputContainer.Parent = inputFrame
         
         -- 创建输入框背景
         local inputBackground = Utils.RoundFrame(DesignSystem.Radius.MD, {
             Name = "Background",
             Size = UDim2.new(1, 0, 1, 0),
             BackgroundColor3 = theme.Surface,
-            ZIndex = -1
+            Parent = inputContainer
         })
-        inputBackground.Parent = textBox
         
         local inputCorner = Utils.Create("UICorner", {
             CornerRadius = UDim.new(0, DesignSystem.Radius.MD)
@@ -1484,22 +1447,30 @@ function NovaUI:CreateWindow(config)
         })
         inputStroke.Parent = inputBackground
         
-        -- 添加内边距
-        local padding = Utils.Create("UIPadding", {
-            PaddingLeft = UDim.new(0, DesignSystem.Spacing.MD),
-            PaddingRight = UDim.new(0, DesignSystem.Spacing.MD)
+        local textBox = Utils.Create("TextBox", {
+            Name = "InputField",
+            Size = UDim2.new(1, -DesignSystem.Spacing.MD * 2, 1, 0),
+            Position = UDim2.new(0, DesignSystem.Spacing.MD, 0, 0),
+            BackgroundTransparency = 1,
+            Text = currentText,
+            PlaceholderText = Input.Placeholder,
+            TextColor3 = theme.Text.Primary,
+            PlaceholderColor3 = theme.Text.Disabled,
+            TextSize = DesignSystem.Typography.Sizes.Body,
+            Font = DesignSystem.Typography.Font,
+            ClearTextOnFocus = false,
+            Parent = inputContainer
         })
-        padding.Parent = textBox
         
         -- 焦点效果
-        Utils.AddSignal(textBox.Focused, function()
+        table.insert(Window.Connections, Utils.SafeConnect(textBox, "Focused", function()
             Utils.Tween(inputStroke, {
                 Color = theme.Primary,
                 Thickness = 2
             }, 0.1)
-        end)
+        end))
         
-        Utils.AddSignal(textBox.FocusLost, function()
+        table.insert(Window.Connections, Utils.SafeConnect(textBox, "FocusLost", function()
             Utils.Tween(inputStroke, {
                 Color = theme.Border,
                 Thickness = 1
@@ -1509,7 +1480,7 @@ function NovaUI:CreateWindow(config)
             if Input.OnChange then
                 Input.OnChange(currentText)
             end
-        end)
+        end))
         
         return inputFrame
     end
@@ -1525,7 +1496,7 @@ function NovaUI:CreateWindow(config)
             Order = config.Order or 1
         }
         
-        local theme = ThemeSystem.Themes[Window.Theme]
+        local theme = ThemeSystem.Themes[Window.Theme] or ThemeSystem.Themes["Dark"]
         local colorMap = {
             Primary = theme.Text.Primary,
             Secondary = theme.Text.Secondary,
@@ -1552,11 +1523,11 @@ function NovaUI:CreateWindow(config)
         local label = Utils.Create("TextLabel", {
             Name = "Label_" .. Label.Text,
             Text = Label.Text,
-            TextColor3 = colorMap[Label.Color],
-            TextSize = sizeMap[Label.Type],
+            TextColor3 = colorMap[Label.Color] or theme.Text.Primary,
+            TextSize = sizeMap[Label.Type] or DesignSystem.Typography.Sizes.Body,
             Font = DesignSystem.Typography.Font,
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, sizeMap[Label.Type] + 8),
+            Size = UDim2.new(1, 0, 0, (sizeMap[Label.Type] or DesignSystem.Typography.Sizes.Body) + 8),
             TextXAlignment = alignMap[Label.Align] or Enum.TextXAlignment.Left,
             TextWrapped = true,
             Parent = Window.CurrentTab and Window.CurrentTab.Page,
@@ -1596,16 +1567,26 @@ function NovaUI:CreateWindow(config)
     end
     
     function Window:Destroy()
-        Window.Container:Destroy()
+        -- 断开所有连接
+        for _, connection in ipairs(Window.Connections) do
+            if connection then
+                connection:Disconnect()
+            end
+        end
+        
+        if Window.Container then
+            Window.Container:Destroy()
+        end
+        
         Window = nil
     end
     
     -- 关闭按钮事件
-    Utils.AddSignal(Window.CloseButton.InputBegan, function(input)
+    table.insert(Window.Connections, Utils.SafeConnect(Window.CloseButton, "InputBegan", function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             Window:Close()
         end
-    end)
+    end))
     
     return Window
 end
@@ -1621,7 +1602,7 @@ function NovaUI:Notify(config)
         Type = config.Type or "Info" -- Info, Success, Warning, Error
     }
     
-    local theme = ThemeSystem.Themes[ThemeSystem.Current]
+    local theme = ThemeSystem.Themes[ThemeSystem.Current] or ThemeSystem.Themes["Dark"]
     local typeColors = {
         Info = theme.Primary,
         Success = DesignSystem.Colors.Success,
@@ -1743,11 +1724,13 @@ function NovaUI:Notify(config)
         Utils.Tween(notificationContainer, {
             Position = UDim2.new(1, 20, 1, -100)
         }, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In, function()
-            notificationFrame:Destroy()
+            if notificationFrame and notificationFrame.Parent then
+                notificationFrame:Destroy()
+            end
         end)
     end
     
-    Utils.AddSignal(closeButton.MouseButton1Click, function()
+    Utils.SafeConnect(closeButton, "MouseButton1Click", function()
         destroyNotification()
     end)
     
@@ -1776,7 +1759,7 @@ function NovaUI:Popup(config)
         OnClose = config.OnClose or function() end
     }
     
-    local theme = ThemeSystem.Themes[ThemeSystem.Current]
+    local theme = ThemeSystem.Themes[ThemeSystem.Current] or ThemeSystem.Themes["Dark"]
     
     -- 创建遮罩层
     local overlay = Utils.Create("ScreenGui", {
@@ -1911,20 +1894,20 @@ function NovaUI:Popup(config)
         textButton.Parent = button
         
         -- 悬停效果
-        Utils.AddSignal(textButton.MouseEnter, function()
+        Utils.SafeConnect(textButton, "MouseEnter", function()
             Utils.Tween(button, {
                 BackgroundColor3 = color:Lerp(Color3.new(1, 1, 1), 0.1)
             }, 0.1)
         end)
         
-        Utils.AddSignal(textButton.MouseLeave, function()
+        Utils.SafeConnect(textButton, "MouseLeave", function()
             Utils.Tween(button, {
                 BackgroundColor3 = color
             }, 0.1)
         end)
         
         -- 点击事件
-        Utils.AddSignal(textButton.MouseButton1Click, function()
+        Utils.SafeConnect(textButton, "MouseButton1Click", function()
             closePopup()
             if onClick then
                 onClick()
@@ -1950,7 +1933,9 @@ function NovaUI:Popup(config)
         Utils.Tween(popupFrame, {
             Size = UDim2.new(0, 0, 0, 0)
         }, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In, function()
-            overlay:Destroy()
+            if overlay and overlay.Parent then
+                overlay:Destroy()
+            end
             if Popup.OnClose then
                 Popup.OnClose()
             end
@@ -1958,7 +1943,7 @@ function NovaUI:Popup(config)
     end
     
     -- 点击遮罩层关闭
-    Utils.AddSignal(overlayFrame.InputBegan, function(input)
+    Utils.SafeConnect(overlayFrame, "InputBegan", function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             local mousePos = input.Position
             local popupPos = popupFrame.AbsolutePosition
@@ -1999,1813 +1984,11 @@ function NovaUI:GetThemes()
     return themes
 end
 
--- 初始化函数（如果需要）
+-- 初始化函数
 function NovaUI:Init()
-    -- 可以在这里添加初始化逻辑
-    warn("NovaUI v1.0.0 Loaded Successfully!")
+    warn("NovaUI v1.1.0 Loaded Successfully!")
+    return true
 end
 
-return NovaUI        Font = "rbxasset://fonts/families/SourceSansPro.json",
-        Sizes = {
-            Title = 24,
-            Heading = 20,
-            Subheading = 17,
-            Body = 15,
-            Caption = 13,
-            Small = 11
-        },
-        Weights = {
-            Light = Enum.FontWeight.Light,
-            Regular = Enum.FontWeight.Regular,
-            Medium = Enum.FontWeight.Medium,
-            SemiBold = Enum.FontWeight.SemiBold,
-            Bold = Enum.FontWeight.Bold
-        }
-    },
-    
-    Spacing = {
-        XS = 4,
-        SM = 8,
-        MD = 12,
-        LG = 16,
-        XL = 24,
-        XXL = 32
-    },
-    
-    Radius = {
-        None = 0,
-        SM = 4,
-        MD = 8,
-        LG = 12,
-        XL = 16,
-        Full = 999
-    },
-    
-    Shadows = {
-        Low = {
-            Transparency = 0.8,
-            Size = UDim2.new(1, 6, 1, 6),
-            Position = UDim2.new(0, 3, 0, 3)
-        },
-        Medium = {
-            Transparency = 0.7,
-            Size = UDim2.new(1, 10, 1, 10),
-            Position = UDim2.new(0, 5, 0, 5)
-        },
-        High = {
-            Transparency = 0.6,
-            Size = UDim2.new(1, 16, 1, 16),
-            Position = UDim2.new(0, 8, 0, 8)
-        }
-    }
-}
-
--- 图标系统（使用同样的图标库）
-local Icons = {}
-do
-    local iconData = game:HttpGet("https://raw.githubusercontent.com/Footagesus/Icons/main/Main-v2.lua")
-    local iconLib = loadstring(iconData)()
-    iconLib.SetIconsType("lucide")
-    
-    function Icons.Get(iconName, size)
-        return iconLib.Icon2(iconName, nil, size ~= false)
-    end
-    
-    function Icons.Image(iconName, color, size)
-        local iconData = Icons.Get(iconName)
-        if not iconData then return nil end
-        
-        local imageLabel = Instance.new("ImageLabel")
-        imageLabel.Image = iconData[1]
-        imageLabel.ImageRectSize = iconData[2].ImageRectSize
-        imageLabel.ImageRectOffset = iconData[2].ImageRectPosition
-        imageLabel.BackgroundTransparency = 1
-        imageLabel.Size = size or UDim2.new(0, 20, 0, 20)
-        imageLabel.ImageColor3 = color or DesignSystem.Colors.Gray["600"]
-        
-        return imageLabel
-    end
-end
-
--- 工具函数
-local Utils = {}
-do
-    function Utils.Tween(object, properties, duration, easingStyle, easingDirection)
-        easingStyle = easingStyle or Enum.EasingStyle.Quad
-        easingDirection = easingDirection or Enum.EasingDirection.Out
-        duration = duration or 0.2
-        
-        local tweenInfo = TweenInfo.new(duration, easingStyle, easingDirection)
-        local tween = Services.TweenService:Create(object, tweenInfo, properties)
-        tween:Play()
-        return tween
-    end
-    
-    function Utils.Create(class, properties, children)
-        local instance = Instance.new(class)
-        
-        for prop, value in pairs(properties or {}) do
-            if prop ~= "ThemeTag" then
-                instance[prop] = value
-            end
-        end
-        
-        if children then
-            for _, child in ipairs(children) do
-                child.Parent = instance
-            end
-        end
-        
-        return instance
-    end
-    
-    function Utils.RoundFrame(radius, properties, children)
-        local frame = Utils.Create("Frame", {
-            BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 1, 0)
-        }, {
-            Utils.Create("UICorner", {
-                CornerRadius = UDim.new(0, radius)
-            })
-        })
-        
-        for prop, value in pairs(properties or {}) do
-            if prop ~= "ThemeTag" then
-                frame[prop] = value
-            end
-        end
-        
-        if children then
-            for _, child in ipairs(children) do
-                child.Parent = frame
-            end
-        end
-        
-        return frame
-    end
-    
-    function Utils.AddSignal(connection, callback)
-        local signal = connection:Connect(callback)
-        return signal
-    end
-end
-
--- 主题系统
-local ThemeSystem = {
-    Current = "Dark",
-    Themes = {
-        Light = {
-            Name = "Light",
-            Background = DesignSystem.Colors.Gray["50"],
-            Surface = Color3.fromHex("#FFFFFF"),
-            Primary = DesignSystem.Colors.Primary,
-            Text = {
-                Primary = DesignSystem.Colors.Gray["900"],
-                Secondary = DesignSystem.Colors.Gray["600"],
-                Disabled = DesignSystem.Colors.Gray["400"],
-                Inverse = Color3.fromHex("#FFFFFF")
-            },
-            Border = DesignSystem.Colors.Gray["200"],
-            Divider = DesignSystem.Colors.Gray["100"]
-        },
-        
-        Dark = {
-            Name = "Dark",
-            Background = DesignSystem.Colors.Gray["900"],
-            Surface = DesignSystem.Colors.Gray["800"],
-            Primary = DesignSystem.Colors.Primary,
-            Text = {
-                Primary = DesignSystem.Colors.Gray["50"],
-                Secondary = DesignSystem.Colors.Gray["300"],
-                Disabled = DesignSystem.Colors.Gray["600"],
-                Inverse = Color3.fromHex("#000000")
-            },
-            Border = DesignSystem.Colors.Gray["700"],
-            Divider = DesignSystem.Colors.Gray["800"]
-        },
-        
-        Blue = {
-            Name = "Blue",
-            Background = Color3.fromHex("#0A1929"),
-            Surface = Color3.fromHex("#132F4C"),
-            Primary = Color3.fromHex("#2196F3"),
-            Text = {
-                Primary = Color3.fromHex("#E3F2FD"),
-                Secondary = Color3.fromHex("#90CAF9"),
-                Disabled = Color3.fromHex("#64B5F6"),
-                Inverse = Color3.fromHex("#000000")
-            },
-            Border = Color3.fromHex("#1E3A5F"),
-            Divider = Color3.fromHex("#1A365D")
-        }
-    }
-}
-
--- 窗口组件
-function NovaUI:CreateWindow(config)
-    config = config or {}
-    
-    local Window = {
-        Title = config.Title or "NovaUI Window",
-        Size = config.Size or UDim2.new(0, 600, 0, 500),
-        Position = config.Position or UDim2.new(0.5, 0, 0.5, 0),
-        Theme = config.Theme or "Dark",
-        Acrylic = config.Acrylic or false,
-        Resizable = config.Resizable or true,
-        Draggable = config.Draggable or true,
-        MinSize = config.MinSize or Vector2.new(400, 300),
-        MaxSize = config.MaxSize or Vector2.new(1200, 800),
-        
-        UIElements = {},
-        Tabs = {},
-        CurrentTab = nil,
-        IsOpen = true
-    }
-    
-    -- 创建主窗口容器
-    Window.Container = Utils.Create("Frame", {
-        Name = "NovaWindow",
-        Size = Window.Size,
-        Position = Window.Position,
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        BackgroundTransparency = 1,
-        Parent = config.Parent or Services.Players.LocalPlayer:WaitForChild("PlayerGui")
-    })
-    
-    -- 应用主题
-    ThemeSystem.Current = Window.Theme
-    local theme = ThemeSystem.Themes[Window.Theme]
-    
-    -- 创建窗口背景
-    Window.Background = Utils.RoundFrame(DesignSystem.Radius.LG, {
-        Name = "Background",
-        BackgroundColor3 = theme.Surface,
-        Size = UDim2.new(1, 0, 1, 0),
-        Parent = Window.Container,
-        ClipsDescendants = true
-    })
-    
-    -- 添加阴影效果
-    local shadow = Utils.Create("ImageLabel", {
-        Name = "Shadow",
-        Image = "rbxassetid://5554236805",
-        ImageTransparency = DesignSystem.Shadows.Medium.Transparency,
-        ScaleType = Enum.ScaleType.Slice,
-        SliceCenter = Rect.new(23, 23, 277, 277),
-        Size = DesignSystem.Shadows.Medium.Size,
-        Position = DesignSystem.Shadows.Medium.Position,
-        BackgroundTransparency = 1,
-        Parent = Window.Container,
-        ZIndex = -1
-    })
-    
-    -- 创建标题栏
-    Window.TitleBar = Utils.Create("Frame", {
-        Name = "TitleBar",
-        Size = UDim2.new(1, 0, 0, 48),
-        BackgroundColor3 = theme.Surface,
-        BorderSizePixel = 0,
-        Parent = Window.Background
-    }, {
-        Utils.Create("UICorner", {
-            CornerRadius = UDim.new(0, DesignSystem.Radius.LG),
-            Corner = {TopLeft = true, TopRight = true}
-        })
-    })
-    
-    -- 标题文本
-    Window.TitleText = Utils.Create("TextLabel", {
-        Name = "Title",
-        Text = Window.Title,
-        TextColor3 = theme.Text.Primary,
-        TextSize = DesignSystem.Typography.Sizes.Heading,
-        Font = Font.fromName("SourceSansPro", Enum.FontWeight.SemiBold),
-        BackgroundTransparency = 1,
-        Position = UDim2.new(0, DesignSystem.Spacing.LG, 0, 0),
-        Size = UDim2.new(1, -100, 1, 0),
-        TextXAlignment = Enum.TextXAlignment.Left
-    })
-    Window.TitleText.Parent = Window.TitleBar
-    
-    -- 关闭按钮
-    Window.CloseButton = Utils.RoundFrame(DesignSystem.Radius.MD, {
-        Name = "CloseButton",
-        BackgroundColor3 = DesignSystem.Colors.Danger,
-        Size = UDim2.new(0, 32, 0, 32),
-        Position = UDim2.new(1, -DesignSystem.Spacing.LG, 0.5, 0),
-        AnchorPoint = Vector2.new(1, 0.5),
-        Parent = Window.TitleBar
-    }, {
-        Icons.Image("x", Color3.new(1, 1, 1), UDim2.new(0, 16, 0, 16))
-    })
-    
-    -- 创建内容区域
-    Window.Content = Utils.Create("Frame", {
-        Name = "Content",
-        Size = UDim2.new(1, 0, 1, -48),
-        Position = UDim2.new(0, 0, 0, 48),
-        BackgroundTransparency = 1,
-        Parent = Window.Background
-    })
-    
-    -- 创建标签栏容器
-    Window.TabContainer = Utils.Create("ScrollingFrame", {
-        Name = "TabContainer",
-        Size = UDim2.new(0, 200, 1, 0),
-        BackgroundColor3 = theme.Background,
-        BorderSizePixel = 0,
-        ScrollBarThickness = 3,
-        ScrollBarImageColor3 = theme.Primary,
-        ScrollingDirection = Enum.ScrollingDirection.Y,
-        AutomaticCanvasSize = Enum.AutomaticSize.Y,
-        CanvasSize = UDim2.new(0, 0, 0, 0),
-        Parent = Window.Content
-    }, {
-        Utils.Create("UIListLayout", {
-            SortOrder = Enum.SortOrder.LayoutOrder,
-            Padding = UDim.new(0, DesignSystem.Spacing.XS)
-        }),
-        Utils.Create("UIPadding", {
-            PaddingTop = UDim.new(0, DesignSystem.Spacing.MD),
-            PaddingLeft = UDim.new(0, DesignSystem.Spacing.MD),
-            PaddingRight = UDim.new(0, DesignSystem.Spacing.MD)
-        })
-    })
-    
-    -- 创建页面容器
-    Window.PageContainer = Utils.Create("Frame", {
-        Name = "PageContainer",
-        Size = UDim2.new(1, -200, 1, 0),
-        Position = UDim2.new(0, 200, 0, 0),
-        BackgroundTransparency = 1,
-        Parent = Window.Content
-    })
-    
-    -- 拖拽功能
-    if Window.Draggable then
-        local dragging = false
-        local dragStart, startPos
-        
-        Utils.AddSignal(Window.TitleBar.InputBegan, function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                dragging = true
-                dragStart = input.Position
-                startPos = Window.Container.Position
-                
-                Utils.Tween(Window.Container, {
-                    Position = startPos + UDim2.new(0, 0, 0, -2)
-                }, 0.1)
-            end
-        end)
-        
-        Utils.AddSignal(Services.UserInputService.InputChanged, function(input)
-            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                local delta = input.Position - dragStart
-                Window.Container.Position = startPos + UDim2.new(0, delta.X, 0, delta.Y)
-            end
-        end)
-        
-        Utils.AddSignal(Services.UserInputService.InputEnded, function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                dragging = false
-                Utils.Tween(Window.Container, {
-                    Position = Window.Container.Position + UDim2.new(0, 0, 0, 2)
-                }, 0.1)
-            end
-        end)
-    end
-    
-    -- 调整大小功能
-    if Window.Resizable then
-        local resizing = false
-        local resizeStart, startSize
-        
-        local resizeHandle = Utils.Create("Frame", {
-            Name = "ResizeHandle",
-            Size = UDim2.new(0, 20, 0, 20),
-            Position = UDim2.new(1, 0, 1, 0),
-            AnchorPoint = Vector2.new(1, 1),
-            BackgroundTransparency = 1,
-            Parent = Window.Container
-        })
-        
-        local resizeIcon = Icons.Image("maximize-2", theme.Text.Secondary, UDim2.new(0, 12, 0, 12))
-        resizeIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
-        resizeIcon.AnchorPoint = Vector2.new(0.5, 0.5)
-        resizeIcon.Parent = resizeHandle
-        
-        Utils.AddSignal(resizeHandle.InputBegan, function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                resizing = true
-                resizeStart = input.Position
-                startSize = Window.Container.Size
-            end
-        end)
-        
-        Utils.AddSignal(Services.UserInputService.InputChanged, function(input)
-            if resizing and input.UserInputType == Enum.UserInputType.MouseMovement then
-                local delta = input.Position - resizeStart
-                local newSize = startSize + UDim2.new(0, delta.X, 0, delta.Y)
-                
-                -- 应用最小/最大尺寸限制
-                newSize = UDim2.new(
-                    newSize.X.Scale,
-                    math.clamp(newSize.X.Offset, Window.MinSize.X, Window.MaxSize.X),
-                    newSize.Y.Scale,
-                    math.clamp(newSize.Y.Offset, Window.MinSize.Y, Window.MaxSize.Y)
-                )
-                
-                Window.Container.Size = newSize
-            end
-        end)
-        
-        Utils.AddSignal(Services.UserInputService.InputEnded, function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                resizing = false
-            end
-        end)
-    end
-    
-    -- 标签页管理
-    function Window:AddTab(config)
-        config = config or {}
-        
-        local Tab = {
-            Name = config.Name or "Tab",
-            Icon = config.Icon,
-            Content = config.Content,
-            Order = #Window.Tabs + 1,
-            
-            Elements = {},
-            IsActive = false,
-            Page = nil
-        }
-        
-        -- 创建标签按钮
-        local tabButton = Utils.RoundFrame(DesignSystem.Radius.MD, {
-            Name = "TabButton_" .. Tab.Name,
-            Size = UDim2.new(1, 0, 0, 40),
-            BackgroundColor3 = theme.Background,
-            Parent = Window.TabContainer,
-            LayoutOrder = Tab.Order
-        }, {
-            Utils.Create("UIStroke", {
-                Thickness = 1,
-                Color = theme.Border,
-                ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-            }),
-            
-            Utils.Create("Frame", {
-                Name = "Content",
-                Size = UDim2.new(1, -DesignSystem.Spacing.MD * 2, 1, -DesignSystem.Spacing.SM * 2),
-                Position = UDim2.new(0, DesignSystem.Spacing.MD, 0, DesignSystem.Spacing.SM),
-                BackgroundTransparency = 1
-            }, {
-                Tab.Icon and Icons.Image(Tab.Icon, theme.Text.Secondary, UDim2.new(0, 20, 0, 20)) or nil,
-                
-                Utils.Create("TextLabel", {
-                    Name = "Label",
-                    Text = Tab.Name,
-                    TextColor3 = theme.Text.Secondary,
-                    TextSize = DesignSystem.Typography.Sizes.Body,
-                    Font = Font.fromName("SourceSansPro", Enum.FontWeight.Medium),
-                    BackgroundTransparency = 1,
-                    Size = UDim2.new(1, Tab.Icon and -28 or 0, 1, 0),
-                    Position = Tab.Icon and UDim2.new(0, 28, 0, 0) or UDim2.new(0, 0, 0, 0),
-                    TextXAlignment = Enum.TextXAlignment.Left
-                }),
-                
-                Utils.Create("UIListLayout", {
-                    FillDirection = Enum.FillDirection.Horizontal,
-                    Padding = UDim.new(0, DesignSystem.Spacing.SM),
-                    VerticalAlignment = Enum.VerticalAlignment.Center
-                })
-            })
-        })
-        
-        Tab.Button = tabButton
-        
-        -- 创建标签页面
-        Tab.Page = Utils.Create("ScrollingFrame", {
-            Name = "Page_" .. Tab.Name,
-            Size = UDim2.new(1, 0, 1, 0),
-            BackgroundTransparency = 1,
-            Visible = false,
-            ScrollBarThickness = 3,
-            ScrollBarImageColor3 = theme.Primary,
-            ScrollingDirection = Enum.ScrollingDirection.Y,
-            AutomaticCanvasSize = Enum.AutomaticSize.Y,
-            CanvasSize = UDim2.new(0, 0, 0, 0),
-            Parent = Window.PageContainer
-        }, {
-            Utils.Create("UIListLayout", {
-                SortOrder = Enum.SortOrder.LayoutOrder,
-                Padding = UDim.new(0, DesignSystem.Spacing.MD)
-            }),
-            Utils.Create("UIPadding", {
-                PaddingTop = UDim.new(0, DesignSystem.Spacing.LG),
-                PaddingLeft = UDim.new(0, DesignSystem.Spacing.LG),
-                PaddingRight = UDim.new(0, DesignSystem.Spacing.LG),
-                PaddingBottom = UDim.new(0, DesignSystem.Spacing.LG)
-            })
-        })
-        
-        -- 标签点击事件
-        Utils.AddSignal(tabButton.InputBegan, function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                Window:SelectTab(Tab.Name)
-            end
-        end)
-        
-        -- 悬停效果
-        Utils.AddSignal(tabButton.MouseEnter, function()
-            if not Tab.IsActive then
-                Utils.Tween(tabButton, {
-                    BackgroundColor3 = theme.Divider
-                }, 0.1)
-            end
-        end)
-        
-        Utils.AddSignal(tabButton.MouseLeave, function()
-            if not Tab.IsActive then
-                Utils.Tween(tabButton, {
-                    BackgroundColor3 = theme.Background
-                }, 0.1)
-            end
-        end)
-        
-        -- 添加到窗口
-        Window.Tabs[Tab.Name] = Tab
-        
-        -- 如果是第一个标签，自动选择
-        if #Window.Tabs == 1 then
-            Window:SelectTab(Tab.Name)
-        end
-        
-        return Tab
-    end
-    
-    function Window:SelectTab(tabName)
-        local theme = ThemeSystem.Themes[Window.Theme]
-        
-        -- 取消选择所有标签
-        for name, tab in pairs(Window.Tabs) do
-            if tab.IsActive then
-                tab.IsActive = false
-                tab.Page.Visible = false
-                
-                if tab.Button then
-                    Utils.Tween(tab.Button, {
-                        BackgroundColor3 = theme.Background
-                    }, 0.1)
-                    
-                    local label = tab.Button.Content:FindFirstChild("Label")
-                    if label then
-                        Utils.Tween(label, {
-                            TextColor3 = theme.Text.Secondary
-                        }, 0.1)
-                    end
-                    
-                    local icon = tab.Button.Content:FindFirstChildWhichIsA("ImageLabel")
-                    if icon then
-                        Utils.Tween(icon, {
-                            ImageColor3 = theme.Text.Secondary
-                        }, 0.1)
-                    end
-                end
-            end
-        end
-        
-        -- 选择新标签
-        local selectedTab = Window.Tabs[tabName]
-        if selectedTab then
-            selectedTab.IsActive = true
-            selectedTab.Page.Visible = true
-            Window.CurrentTab = selectedTab
-            
-            if selectedTab.Button then
-                Utils.Tween(selectedTab.Button, {
-                    BackgroundColor3 = theme.Primary
-                }, 0.1)
-                
-                local label = selectedTab.Button.Content:FindFirstChild("Label")
-                if label then
-                    Utils.Tween(label, {
-                        TextColor3 = theme.Text.Inverse
-                    }, 0.1)
-                end
-                
-                local icon = selectedTab.Button.Content:FindFirstChildWhichIsA("ImageLabel")
-                if icon then
-                    Utils.Tween(icon, {
-                        ImageColor3 = theme.Text.Inverse
-                    }, 0.1)
-                end
-            end
-        end
-    end
-    
-    -- 元素创建方法
-    function Window:AddButton(config)
-        config = config or {}
-        
-        local Button = {
-            Text = config.Text or "Button",
-            Icon = config.Icon,
-            Color = config.Color or "Primary",
-            Size = config.Size or "Medium",
-            Width = config.Width or "Full",
-            OnClick = config.OnClick or function() end
-        }
-        
-        local theme = ThemeSystem.Themes[Window.Theme]
-        local colorMap = {
-            Primary = theme.Primary,
-            Secondary = DesignSystem.Colors.Secondary,
-            Success = DesignSystem.Colors.Success,
-            Warning = DesignSystem.Colors.Warning,
-            Danger = DesignSystem.Colors.Danger
-        }
-        
-        local sizeMap = {
-            Small = {Height = 32, FontSize = DesignSystem.Typography.Sizes.Caption, Padding = 12},
-            Medium = {Height = 40, FontSize = DesignSystem.Typography.Sizes.Body, Padding = 16},
-            Large = {Height = 48, FontSize = DesignSystem.Typography.Sizes.Subheading, Padding = 20}
-        }
-        
-        local widthMap = {
-            Full = UDim2.new(1, 0, 0, sizeMap[Button.Size].Height),
-            Auto = UDim2.new(0, 0, 0, sizeMap[Button.Size].Height),
-            Half = UDim2.new(0.5, -DesignSystem.Spacing.SM, 0, sizeMap[Button.Size].Height)
-        }
-        
-        local size = sizeMap[Button.Size]
-        
-        local buttonFrame = Utils.RoundFrame(DesignSystem.Radius.MD, {
-            Name = "Button_" .. Button.Text,
-            Size = widthMap[Button.Width],
-            BackgroundColor3 = colorMap[Button.Color],
-            Parent = Window.CurrentTab and Window.CurrentTab.Page,
-            LayoutOrder = config.Order or 1,
-            AutomaticSize = Button.Width == "Auto" and Enum.AutomaticSize.X or Enum.AutomaticSize.None
-        }, {
-            Utils.Create("UICorner", {
-                CornerRadius = UDim.new(0, DesignSystem.Radius.MD)
-            }),
-            
-            Utils.Create("UIStroke", {
-                Thickness = 1,
-                Color = colorMap[Button.Color]:Lerp(Color3.new(0, 0, 0), 0.2),
-                Transparency = 0.5
-            }),
-            
-            Utils.Create("TextButton", {
-                Name = "Button",
-                Size = UDim2.new(1, 0, 1, 0),
-                BackgroundTransparency = 1,
-                Text = "",
-                AutoButtonColor = false
-            }),
-            
-            Utils.Create("Frame", {
-                Name = "Content",
-                Size = UDim2.new(1, -size.Padding * 2, 1, 0),
-                Position = UDim2.new(0, size.Padding, 0, 0),
-                BackgroundTransparency = 1
-            }, {
-                Button.Icon and Icons.Image(Button.Icon, Color3.new(1, 1, 1), UDim2.new(0, size.FontSize, 0, size.FontSize)) or nil,
-                
-                Utils.Create("TextLabel", {
-                    Name = "Label",
-                    Text = Button.Text,
-                    TextColor3 = Color3.new(1, 1, 1),
-                    TextSize = size.FontSize,
-                    Font = Font.fromName("SourceSansPro", Enum.FontWeight.SemiBold),
-                    BackgroundTransparency = 1,
-                    Size = UDim2.new(1, Button.Icon and -(size.FontSize + DesignSystem.Spacing.SM) or 0, 1, 0),
-                    Position = Button.Icon and UDim2.new(0, size.FontSize + DesignSystem.Spacing.SM, 0, 0) or UDim2.new(0, 0, 0, 0),
-                    TextXAlignment = Enum.TextXAlignment.Center
-                }),
-                
-                Utils.Create("UIListLayout", {
-                    FillDirection = Enum.FillDirection.Horizontal,
-                    Padding = UDim.new(0, DesignSystem.Spacing.SM),
-                    VerticalAlignment = Enum.VerticalAlignment.Center,
-                    HorizontalAlignment = Enum.HorizontalAlignment.Center
-                })
-            })
-        })
-        
-        -- 悬停效果
-        local button = buttonFrame:FindFirstChild("Button")
-        local originalColor = buttonFrame.BackgroundColor3
-        
-        Utils.AddSignal(button.MouseEnter, function()
-            Utils.Tween(buttonFrame, {
-                BackgroundColor3 = originalColor:Lerp(Color3.new(1, 1, 1), 0.1)
-            }, 0.1)
-        end)
-        
-        Utils.AddSignal(button.MouseLeave, function()
-            Utils.Tween(buttonFrame, {
-                BackgroundColor3 = originalColor
-            }, 0.1)
-        end)
-        
-        Utils.AddSignal(button.MouseButton1Down, function()
-            Utils.Tween(buttonFrame, {
-                BackgroundColor3 = originalColor:Lerp(Color3.new(0, 0, 0), 0.1)
-            }, 0.05)
-        end)
-        
-        Utils.AddSignal(button.MouseButton1Up, function()
-            Utils.Tween(buttonFrame, {
-                BackgroundColor3 = originalColor:Lerp(Color3.new(1, 1, 1), 0.1)
-            }, 0.1)
-            
-            -- 调用点击回调
-            if Button.OnClick then
-                Button.OnClick()
-            end
-        end)
-        
-        if Button.Width == "Auto" then
-            Utils.AddSignal(buttonFrame.Content:FindFirstChild("Label"):GetPropertyChangedSignal("TextBounds"), function()
-                local label = buttonFrame.Content:FindFirstChild("Label")
-                local icon = buttonFrame.Content:FindFirstChildWhichIsA("ImageLabel")
-                
-                local width = label.TextBounds.X + size.Padding * 2
-                if icon then
-                    width = width + icon.AbsoluteSize.X + DesignSystem.Spacing.SM
-                end
-                
-                buttonFrame.Size = UDim2.new(0, width, 0, size.Height)
-            end)
-        end
-        
-        return buttonFrame
-    end
-    
-    function Window:AddToggle(config)
-        config = config or {}
-        
-        local Toggle = {
-            Text = config.Text or "Toggle",
-            Default = config.Default or false,
-            OnToggle = config.OnToggle or function(state) end,
-            Order = config.Order or 1
-        }
-        
-        local theme = ThemeSystem.Themes[Window.Theme]
-        local isToggled = Toggle.Default
-        
-        local toggleFrame = Utils.Create("Frame", {
-            Name = "Toggle_" .. Toggle.Text,
-            Size = UDim2.new(1, 0, 0, 48),
-            BackgroundTransparency = 1,
-            Parent = Window.CurrentTab and Window.CurrentTab.Page,
-            LayoutOrder = Toggle.Order
-        }, {
-            Utils.Create("TextLabel", {
-                Name = "Label",
-                Text = Toggle.Text,
-                TextColor3 = theme.Text.Primary,
-                TextSize = DesignSystem.Typography.Sizes.Body,
-                Font = Font.fromName("SourceSansPro", Enum.FontWeight.Medium),
-                BackgroundTransparency = 1,
-                Size = UDim2.new(1, -60, 1, 0),
-                TextXAlignment = Enum.TextXAlignment.Left
-            }),
-            
-            Utils.Create("TextButton", {
-                Name = "ToggleButton",
-                Size = UDim2.new(0, 52, 0, 28),
-                Position = UDim2.new(1, 0, 0.5, 0),
-                AnchorPoint = Vector2.new(1, 0.5),
-                BackgroundTransparency = 1,
-                Text = "",
-                AutoButtonColor = false
-            })
-        })
-        
-        -- 创建切换开关
-        local toggleTrack = Utils.RoundFrame(DesignSystem.Radius.Full, {
-            Name = "Track",
-            Size = UDim2.new(1, 0, 1, 0),
-            BackgroundColor3 = theme.Border,
-            Parent = toggleFrame.ToggleButton
-        }, {
-            Utils.Create("UICorner", {
-                CornerRadius = UDim.new(1, 0)
-            })
-        })
-        
-        local toggleThumb = Utils.RoundFrame(DesignSystem.Radius.Full, {
-            Name = "Thumb",
-            Size = UDim2.new(0, 24, 0, 24),
-            Position = UDim2.new(0, 2, 0.5, 0),
-            AnchorPoint = Vector2.new(0, 0.5),
-            BackgroundColor3 = Color3.new(1, 1, 1),
-            Parent = toggleTrack
-        }, {
-            Utils.Create("UICorner", {
-                CornerRadius = UDim.new(1, 0)
-            }),
-            
-            Utils.Create("UIStroke", {
-                Thickness = 1,
-                Color = theme.Border,
-                Transparency = 0.5
-            })
-        })
-        
-        -- 初始化状态
-        local function updateToggle()
-            if isToggled then
-                Utils.Tween(toggleTrack, {
-                    BackgroundColor3 = theme.Primary
-                }, 0.2)
-                
-                Utils.Tween(toggleThumb, {
-                    Position = UDim2.new(1, -2, 0.5, 0),
-                    AnchorPoint = Vector2.new(1, 0.5)
-                }, 0.2)
-            else
-                Utils.Tween(toggleTrack, {
-                    BackgroundColor3 = theme.Border
-                }, 0.2)
-                
-                Utils.Tween(toggleThumb, {
-                    Position = UDim2.new(0, 2, 0.5, 0),
-                    AnchorPoint = Vector2.new(0, 0.5)
-                }, 0.2)
-            end
-        end
-        
-        updateToggle()
-        
-        -- 点击事件
-        Utils.AddSignal(toggleFrame.ToggleButton.MouseButton1Click, function()
-            isToggled = not isToggled
-            updateToggle()
-            
-            if Toggle.OnToggle then
-                Toggle.OnToggle(isToggled)
-            end
-        end)
-        
-        return toggleFrame
-    end
-    
-    function Window:AddSlider(config)
-        config = config or {}
-        
-        local Slider = {
-            Text = config.Text or "Slider",
-            Min = config.Min or 0,
-            Max = config.Max or 100,
-            Default = config.Default or 50,
-            Step = config.Step or 1,
-            OnChange = config.OnChange or function(value) end,
-            Order = config.Order or 1
-        }
-        
-        local theme = ThemeSystem.Themes[Window.Theme]
-        local currentValue = Slider.Default
-        
-        local sliderFrame = Utils.Create("Frame", {
-            Name = "Slider_" .. Slider.Text,
-            Size = UDim2.new(1, 0, 0, 64),
-            BackgroundTransparency = 1,
-            Parent = Window.CurrentTab and Window.CurrentTab.Page,
-            LayoutOrder = Slider.Order
-        }, {
-            Utils.Create("TextLabel", {
-                Name = "Label",
-                Text = Slider.Text,
-                TextColor3 = theme.Text.Primary,
-                TextSize = DesignSystem.Typography.Sizes.Body,
-                Font = Font.fromName("SourceSansPro", Enum.FontWeight.Medium),
-                BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 0, 20),
-                TextXAlignment = Enum.TextXAlignment.Left
-            }),
-            
-            Utils.Create("TextLabel", {
-                Name = "Value",
-                Text = tostring(currentValue),
-                TextColor3 = theme.Text.Secondary,
-                TextSize = DesignSystem.Typography.Sizes.Caption,
-                Font = Font.fromName("SourceSansPro", Enum.FontWeight.Regular),
-                BackgroundTransparency = 1,
-                Size = UDim2.new(0, 40, 0, 20),
-                Position = UDim2.new(1, 0, 0, 0),
-                AnchorPoint = Vector2.new(1, 0),
-                TextXAlignment = Enum.TextXAlignment.Right
-            }),
-            
-            Utils.Create("Frame", {
-                Name = "SliderContainer",
-                Size = UDim2.new(1, 0, 0, 32),
-                Position = UDim2.new(0, 0, 0, 24),
-                BackgroundTransparency = 1
-            })
-        })
-        
-        -- 创建滑轨
-        local track = Utils.RoundFrame(DesignSystem.Radius.Full, {
-            Name = "Track",
-            Size = UDim2.new(1, 0, 0, 8),
-            BackgroundColor3 = theme.Border,
-            Parent = sliderFrame.SliderContainer
-        }, {
-            Utils.Create("UICorner", {
-                CornerRadius = UDim.new(1, 0)
-            })
-        })
-        
-        local fill = Utils.RoundFrame(DesignSystem.Radius.Full, {
-            Name = "Fill",
-            Size = UDim2.new((currentValue - Slider.Min) / (Slider.Max - Slider.Min), 0, 1, 0),
-            BackgroundColor3 = theme.Primary,
-            Parent = track
-        }, {
-            Utils.Create("UICorner", {
-                CornerRadius = UDim.new(1, 0)
-            })
-        })
-        
-        local thumb = Utils.RoundFrame(DesignSystem.Radius.Full, {
-            Name = "Thumb",
-            Size = UDim2.new(0, 20, 0, 20),
-            Position = UDim2.new(fill.Size.X.Scale, 0, 0.5, 0),
-            AnchorPoint = Vector2.new(0.5, 0.5),
-            BackgroundColor3 = Color3.new(1, 1, 1),
-            Parent = track
-        }, {
-            Utils.Create("UICorner", {
-                CornerRadius = UDim.new(1, 0)
-            }),
-            
-            Utils.Create("UIStroke", {
-                Thickness = 2,
-                Color = theme.Primary,
-                Transparency = 0.2
-            })
-        })
-        
-        -- 滑块交互
-        local dragging = false
-        
-        local function updateSlider(positionX)
-            local trackSize = track.AbsoluteSize.X
-            local trackPos = track.AbsolutePosition.X
-            
-            local relativePos = math.clamp((positionX - trackPos) / trackSize, 0, 1)
-            local rawValue = Slider.Min + (relativePos * (Slider.Max - Slider.Min))
-            local steppedValue = math.floor((rawValue - Slider.Min) / Slider.Step + 0.5) * Slider.Step + Slider.Min
-            steppedValue = math.clamp(steppedValue, Slider.Min, Slider.Max)
-            
-            currentValue = steppedValue
-            
-            local fillWidth = (currentValue - Slider.Min) / (Slider.Max - Slider.Min)
-            
-            Utils.Tween(fill, {
-                Size = UDim2.new(fillWidth, 0, 1, 0)
-            }, 0.1)
-            
-            Utils.Tween(thumb, {
-                Position = UDim2.new(fillWidth, 0, 0.5, 0)
-            }, 0.1)
-            
-            sliderFrame.Value.Text = tostring(currentValue)
-            
-            if Slider.OnChange then
-                Slider.OnChange(currentValue)
-            end
-        end
-        
-        Utils.AddSignal(track.InputBegan, function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                dragging = true
-                updateSlider(input.Position.X)
-            end
-        end)
-        
-        Utils.AddSignal(Services.UserInputService.InputChanged, function(input)
-            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                updateSlider(input.Position.X)
-            end
-        end)
-        
-        Utils.AddSignal(Services.UserInputService.InputEnded, function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                dragging = false
-            end
-        end)
-        
-        return sliderFrame
-    end
-    
-    function Window:AddDropdown(config)
-        config = config or {}
-        
-        local Dropdown = {
-            Text = config.Text or "Dropdown",
-            Options = config.Options or {"Option 1", "Option 2", "Option 3"},
-            Default = config.Default or 1,
-            OnSelect = config.OnSelect or function(option, index) end,
-            Order = config.Order or 1
-        }
-        
-        local theme = ThemeSystem.Themes[Window.Theme]
-        local isOpen = false
-        local selectedIndex = Dropdown.Default
-        local selectedOption = Dropdown.Options[selectedIndex]
-        
-        local dropdownFrame = Utils.Create("Frame", {
-            Name = "Dropdown_" .. Dropdown.Text,
-            Size = UDim2.new(1, 0, 0, 48),
-            BackgroundTransparency = 1,
-            Parent = Window.CurrentTab and Window.CurrentTab.Page,
-            LayoutOrder = Dropdown.Order
-        }, {
-            Utils.Create("TextLabel", {
-                Name = "Label",
-                Text = Dropdown.Text,
-                TextColor3 = theme.Text.Primary,
-                TextSize = DesignSystem.Typography.Sizes.Body,
-                Font = Font.fromName("SourceSansPro", Enum.FontWeight.Medium),
-                BackgroundTransparency = 1,
-                Size = UDim2.new(1, -60, 1, 0),
-                TextXAlignment = Enum.TextXAlignment.Left
-            }),
-            
-            Utils.Create("TextButton", {
-                Name = "DropdownButton",
-                Size = UDim2.new(0, 120, 0, 32),
-                Position = UDim2.new(1, 0, 0.5, 0),
-                AnchorPoint = Vector2.new(1, 0.5),
-                BackgroundTransparency = 1,
-                Text = "",
-                AutoButtonColor = false
-            })
-        })
-        
-        -- 创建下拉按钮
-        local buttonSurface = Utils.RoundFrame(DesignSystem.Radius.MD, {
-            Name = "Surface",
-            Size = UDim2.new(1, 0, 1, 0),
-            BackgroundColor3 = theme.Surface,
-            Parent = dropdownFrame.DropdownButton
-        }, {
-            Utils.Create("UICorner", {
-                CornerRadius = UDim.new(0, DesignSystem.Radius.MD)
-            }),
-            
-            Utils.Create("UIStroke", {
-                Thickness = 1,
-                Color = theme.Border
-            }),
-            
-            Utils.Create("TextLabel", {
-                Name = "Selected",
-                Text = selectedOption,
-                TextColor3 = theme.Text.Primary,
-                TextSize = DesignSystem.Typography.Sizes.Body,
-                Font = Font.fromName("SourceSansPro", Enum.FontWeight.Regular),
-                BackgroundTransparency = 1,
-                Size = UDim2.new(1, -32, 1, 0),
-                Position = UDim2.new(0, DesignSystem.Spacing.SM, 0, 0),
-                TextXAlignment = Enum.TextXAlignment.Left,
-                TextTruncate = Enum.TextTruncate.AtEnd
-            }),
-            
-            Icons.Image("chevron-down", theme.Text.Secondary, UDim2.new(0, 16, 0, 16))
-        })
-        
-        local chevron = buttonSurface:FindFirstChildWhichIsA("ImageLabel")
-        if chevron then
-            chevron.Position = UDim2.new(1, -DesignSystem.Spacing.SM, 0.5, 0)
-            chevron.AnchorPoint = Vector2.new(1, 0.5)
-        end
-        
-        -- 创建下拉菜单
-        local menuFrame = Utils.Create("Frame", {
-            Name = "DropdownMenu",
-            Size = UDim2.new(0, 120, 0, 0),
-            Position = UDim2.new(1, 0, 1, DesignSystem.Spacing.XS),
-            AnchorPoint = Vector2.new(1, 0),
-            BackgroundTransparency = 1,
-            Visible = false,
-            ClipsDescendants = true,
-            Parent = dropdownFrame.DropdownButton
-        })
-        
-        local menuSurface = Utils.RoundFrame(DesignSystem.Radius.MD, {
-            Name = "MenuSurface",
-            Size = UDim2.new(1, 0, 0, 0),
-            BackgroundColor3 = theme.Surface,
-            Parent = menuFrame
-        }, {
-            Utils.Create("UICorner", {
-                CornerRadius = UDim.new(0, DesignSystem.Radius.MD)
-            }),
-            
-            Utils.Create("UIStroke", {
-                Thickness = 1,
-                Color = theme.Border
-            }),
-            
-            Utils.Create("ScrollingFrame", {
-                Name = "OptionsList",
-                Size = UDim2.new(1, 0, 1, 0),
-                BackgroundTransparency = 1,
-                ScrollBarThickness = 3,
-                ScrollBarImageColor3 = theme.Primary,
-                ScrollingDirection = Enum.ScrollingDirection.Y,
-                AutomaticCanvasSize = Enum.AutomaticSize.Y,
-                CanvasSize = UDim2.new(0, 0, 0, 0)
-            }, {
-                Utils.Create("UIListLayout", {
-                    SortOrder = Enum.SortOrder.LayoutOrder,
-                    Padding = UDim.new(0, 1)
-                })
-            })
-        })
-        
-        -- 创建选项
-        local function createOptions()
-            local optionsList = menuSurface.OptionsList
-            optionsList:ClearAllChildren()
-            
-            for i, option in ipairs(Dropdown.Options) do
-                local optionButton = Utils.Create("TextButton", {
-                    Name = "Option_" .. i,
-                    Size = UDim2.new(1, 0, 0, 32),
-                    BackgroundTransparency = 1,
-                    Text = "",
-                    AutoButtonColor = false,
-                    LayoutOrder = i
-                })
-                
-                local optionFrame = Utils.Create("Frame", {
-                    Name = "OptionFrame",
-                    Size = UDim2.new(1, 0, 1, 0),
-                    BackgroundTransparency = 1
-                }, {
-                    Utils.Create("TextLabel", {
-                        Name = "Label",
-                        Text = option,
-                        TextColor3 = theme.Text.Primary,
-                        TextSize = DesignSystem.Typography.Sizes.Body,
-                        Font = Font.fromName("SourceSansPro", Enum.FontWeight.Regular),
-                        BackgroundTransparency = 1,
-                        Size = UDim2.new(1, -DesignSystem.Spacing.MD * 2, 1, 0),
-                        Position = UDim2.new(0, DesignSystem.Spacing.MD, 0, 0),
-                        TextXAlignment = Enum.TextXAlignment.Left
-                    })
-                })
-                
-                optionFrame.Parent = optionButton
-                optionButton.Parent = optionsList
-                
-                -- 悬停效果
-                Utils.AddSignal(optionButton.MouseEnter, function()
-                    Utils.Tween(optionFrame, {
-                        BackgroundColor3 = theme.Divider
-                    }, 0.1)
-                end)
-                
-                Utils.AddSignal(optionButton.MouseLeave, function()
-                    Utils.Tween(optionFrame, {
-                        BackgroundColor3 = theme.Surface
-                    }, 0.1)
-                end)
-                
-                -- 选择事件
-                Utils.AddSignal(optionButton.MouseButton1Click, function()
-                    selectedIndex = i
-                    selectedOption = option
-                    
-                    buttonSurface.Selected.Text = selectedOption
-                    toggleMenu()
-                    
-                    if Dropdown.OnSelect then
-                        Dropdown.OnSelect(option, i)
-                    end
-                end)
-            end
-        end
-        
-        createOptions()
-        
-        -- 切换菜单显示
-        local function toggleMenu()
-            isOpen = not isOpen
-            
-            if isOpen then
-                menuFrame.Visible = true
-                Utils.Tween(chevron, {
-                    Rotation = 180
-                }, 0.2)
-                
-                Utils.Tween(menuSurface, {
-                    Size = UDim2.new(1, 0, 0, math.min(#Dropdown.Options * 32, 160))
-                }, 0.2)
-            else
-                Utils.Tween(chevron, {
-                    Rotation = 0
-                }, 0.2)
-                
-                Utils.Tween(menuSurface, {
-                    Size = UDim2.new(1, 0, 0, 0)
-                }, 0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In, function()
-                    menuFrame.Visible = false
-                end)
-            end
-        end
-        
-        -- 按钮点击事件
-        Utils.AddSignal(dropdownFrame.DropdownButton.MouseButton1Click, function()
-            toggleMenu()
-        end)
-        
-        -- 点击外部关闭
-        local connection
-        connection = Services.UserInputService.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 and isOpen then
-                local mousePos = input.Position
-                local menuPos = menuFrame.AbsolutePosition
-                local menuSize = menuFrame.AbsoluteSize
-                
-                if not (mousePos.X >= menuPos.X and mousePos.X <= menuPos.X + menuSize.X and
-                       mousePos.Y >= menuPos.Y and mousePos.Y <= menuPos.Y + menuSize.Y) then
-                    toggleMenu()
-                end
-            end
-        end)
-        
-        return dropdownFrame
-    end
-    
-    function Window:AddInput(config)
-        config = config or {}
-        
-        local Input = {
-            Text = config.Text or "Input",
-            Placeholder = config.Placeholder or "Enter text...",
-            Default = config.Default or "",
-            OnChange = config.OnChange or function(text) end,
-            Order = config.Order or 1
-        }
-        
-        local theme = ThemeSystem.Themes[Window.Theme]
-        local currentText = Input.Default
-        
-        local inputFrame = Utils.Create("Frame", {
-            Name = "Input_" .. Input.Text,
-            Size = UDim2.new(1, 0, 0, 64),
-            BackgroundTransparency = 1,
-            Parent = Window.CurrentTab and Window.CurrentTab.Page,
-            LayoutOrder = Input.Order
-        }, {
-            Utils.Create("TextLabel", {
-                Name = "Label",
-                Text = Input.Text,
-                TextColor3 = theme.Text.Primary,
-                TextSize = DesignSystem.Typography.Sizes.Body,
-                Font = Font.fromName("SourceSansPro", Enum.FontWeight.Medium),
-                BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 0, 20),
-                TextXAlignment = Enum.TextXAlignment.Left
-            }),
-            
-            Utils.Create("TextBox", {
-                Name = "InputField",
-                Size = UDim2.new(1, 0, 0, 40),
-                Position = UDim2.new(0, 0, 0, 24),
-                BackgroundTransparency = 1,
-                Text = currentText,
-                PlaceholderText = Input.Placeholder,
-                TextColor3 = theme.Text.Primary,
-                PlaceholderColor3 = theme.Text.Disabled,
-                TextSize = DesignSystem.Typography.Sizes.Body,
-                Font = Font.fromName("SourceSansPro", Enum.FontWeight.Regular),
-                ClearTextOnFocus = false
-            })
-        })
-        
-        local textBox = inputFrame.InputField
-        
-        -- 创建输入框背景
-        local inputBackground = Utils.RoundFrame(DesignSystem.Radius.MD, {
-            Name = "Background",
-            Size = UDim2.new(1, 0, 1, 0),
-            BackgroundColor3 = theme.Surface,
-            ZIndex = -1
-        }, {
-            Utils.Create("UICorner", {
-                CornerRadius = UDim.new(0, DesignSystem.Radius.MD)
-            }),
-            
-            Utils.Create("UIStroke", {
-                Thickness = 1,
-                Color = theme.Border
-            })
-        })
-        inputBackground.Parent = textBox
-        
-        -- 添加内边距
-        local padding = Utils.Create("UIPadding", {
-            PaddingLeft = UDim.new(0, DesignSystem.Spacing.MD),
-            PaddingRight = UDim.new(0, DesignSystem.Spacing.MD)
-        })
-        padding.Parent = textBox
-        
-        -- 焦点效果
-        Utils.AddSignal(textBox.Focused, function()
-            Utils.Tween(inputBackground.UIStroke, {
-                Color = theme.Primary,
-                Thickness = 2
-            }, 0.1)
-        end)
-        
-        Utils.AddSignal(textBox.FocusLost, function()
-            Utils.Tween(inputBackground.UIStroke, {
-                Color = theme.Border,
-                Thickness = 1
-            }, 0.1)
-            
-            currentText = textBox.Text
-            if Input.OnChange then
-                Input.OnChange(currentText)
-            end
-        end)
-        
-        return inputFrame
-    end
-    
-    function Window:AddLabel(config)
-        config = config or {}
-        
-        local Label = {
-            Text = config.Text or "Label",
-            Type = config.Type or "Body", -- Title, Heading, Subheading, Body, Caption
-            Color = config.Color or "Primary",
-            Align = config.Align or "Left",
-            Order = config.Order or 1
-        }
-        
-        local theme = ThemeSystem.Themes[Window.Theme]
-        local colorMap = {
-            Primary = theme.Text.Primary,
-            Secondary = theme.Text.Secondary,
-            Disabled = theme.Text.Disabled,
-            Success = DesignSystem.Colors.Success,
-            Warning = DesignSystem.Colors.Warning,
-            Danger = DesignSystem.Colors.Danger
-        }
-        
-        local sizeMap = {
-            Title = DesignSystem.Typography.Sizes.Title,
-            Heading = DesignSystem.Typography.Sizes.Heading,
-            Subheading = DesignSystem.Typography.Sizes.Subheading,
-            Body = DesignSystem.Typography.Sizes.Body,
-            Caption = DesignSystem.Typography.Sizes.Caption
-        }
-        
-        local weightMap = {
-            Title = Enum.FontWeight.SemiBold,
-            Heading = Enum.FontWeight.SemiBold,
-            Subheading = Enum.FontWeight.Medium,
-            Body = Enum.FontWeight.Regular,
-            Caption = Enum.FontWeight.Regular
-        }
-        
-        local label = Utils.Create("TextLabel", {
-            Name = "Label_" .. Label.Text,
-            Text = Label.Text,
-            TextColor3 = colorMap[Label.Color],
-            TextSize = sizeMap[Label.Type],
-            Font = Font.fromName("SourceSansPro", weightMap[Label.Type]),
-            BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, sizeMap[Label.Type] + 8),
-            TextXAlignment = ({
-                Left = Enum.TextXAlignment.Left,
-                Center = Enum.TextXAlignment.Center,
-                Right = Enum.TextXAlignment.Right
-            })[Label.Align],
-            TextWrapped = true,
-            Parent = Window.CurrentTab and Window.CurrentTab.Page,
-            LayoutOrder = Label.Order
-        })
-        
-        return label
-    end
-    
-    -- 窗口控制方法
-    function Window:Close()
-        Utils.Tween(Window.Container, {
-            Position = Window.Container.Position + UDim2.new(0, 0, 0, 20),
-            BackgroundTransparency = 1
-        }, 0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, function()
-            Window.Container.Visible = false
-            Window.IsOpen = false
-        end)
-    end
-    
-    function Window:Open()
-        Window.Container.Visible = true
-        Window.IsOpen = true
-        
-        Utils.Tween(Window.Container, {
-            Position = Window.Position,
-            BackgroundTransparency = 0
-        }, 0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-    end
-    
-    function Window:Toggle()
-        if Window.IsOpen then
-            Window:Close()
-        else
-            Window:Open()
-        end
-    end
-    
-    function Window:Destroy()
-        Window.Container:Destroy()
-        Window = nil
-    end
-    
-    -- 关闭按钮事件
-    Utils.AddSignal(Window.CloseButton.InputBegan, function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            Window:Close()
-        end
-    end)
-    
-    return Window
-end
-
--- 通知系统
-function NovaUI:Notify(config)
-    config = config or {}
-    
-    local Notification = {
-        Title = config.Title or "Notification",
-        Message = config.Message or "",
-        Duration = config.Duration or 5,
-        Type = config.Type or "Info" -- Info, Success, Warning, Error
-    }
-    
-    local theme = ThemeSystem.Themes[ThemeSystem.Current]
-    local typeColors = {
-        Info = theme.Primary,
-        Success = DesignSystem.Colors.Success,
-        Warning = DesignSystem.Colors.Warning,
-        Error = DesignSystem.Colors.Danger
-    }
-    
-    local color = typeColors[Notification.Type] or theme.Primary
-    
-    -- 创建通知容器
-    local notificationFrame = Utils.Create("Frame", {
-        Name = "Notification",
-        Size = UDim2.new(0, 300, 0, 80),
-        Position = UDim2.new(1, -20, 1, -100),
-        AnchorPoint = Vector2.new(1, 1),
-        BackgroundTransparency = 1,
-        Parent = Services.Players.LocalPlayer:WaitForChild("PlayerGui")
-    })
-    
-    local notificationCard = Utils.RoundFrame(DesignSystem.Radius.LG, {
-        Name = "Card",
-        Size = UDim2.new(1, 0, 1, 0),
-        BackgroundColor3 = theme.Surface,
-        Parent = notificationFrame
-    }, {
-        Utils.Create("UICorner", {
-            CornerRadius = UDim.new(0, DesignSystem.Radius.LG)
-        }),
-        
-        Utils.Create("UIStroke", {
-            Thickness = 1,
-            Color = theme.Border
-        }),
-        
-        -- 左侧颜色条
-        Utils.Create("Frame", {
-            Name = "ColorBar",
-            Size = UDim2.new(0, 4, 1, -16),
-            Position = UDim2.new(0, 8, 0.5, 0),
-            AnchorPoint = Vector2.new(0, 0.5),
-            BackgroundColor3 = color,
-            BackgroundTransparency = 0
-        }, {
-            Utils.Create("UICorner", {
-                CornerRadius = UDim.new(1, 0)
-            })
-        }),
-        
-        -- 标题
-        Utils.Create("TextLabel", {
-            Name = "Title",
-            Text = Notification.Title,
-            TextColor3 = theme.Text.Primary,
-            TextSize = DesignSystem.Typography.Sizes.Body,
-            Font = Font.fromName("SourceSansPro", Enum.FontWeight.SemiBold),
-            BackgroundTransparency = 1,
-            Size = UDim2.new(1, -48, 0, 20),
-            Position = UDim2.new(0, 20, 0, 12),
-            TextXAlignment = Enum.TextXAlignment.Left
-        }),
-        
-        -- 消息
-        Utils.Create("TextLabel", {
-            Name = "Message",
-            Text = Notification.Message,
-            TextColor3 = theme.Text.Secondary,
-            TextSize = DesignSystem.Typography.Sizes.Caption,
-            Font = Font.fromName("SourceSansPro", Enum.FontWeight.Regular),
-            BackgroundTransparency = 1,
-            Size = UDim2.new(1, -48, 0, 36),
-            Position = UDim2.new(0, 20, 0, 32),
-            TextXAlignment = Enum.TextXAlignment.Left,
-            TextWrapped = true
-        }),
-        
-        -- 关闭按钮
-        Utils.Create("TextButton", {
-            Name = "CloseButton",
-            Size = UDim2.new(0, 24, 0, 24),
-            Position = UDim2.new(1, -12, 0, 12),
-            AnchorPoint = Vector2.new(1, 0),
-            BackgroundTransparency = 1,
-            Text = ""
-        }, {
-            Icons.Image("x", theme.Text.Secondary, UDim2.new(0, 16, 0, 16))
-        })
-    })
-    
-    -- 显示动画
-    notificationFrame.Position = UDim2.new(1, 20, 1, -100)
-    notificationCard.Position = UDim2.new(1, 0, 0, 0)
-    
-    Utils.Tween(notificationFrame, {
-        Position = UDim2.new(1, -20, 1, -100)
-    }, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-    
-    Utils.Tween(notificationCard, {
-        Position = UDim2.new(0, 0, 0, 0)
-    }, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-    
-    -- 关闭功能
-    local closeButton = notificationCard:FindFirstChild("CloseButton")
-    if closeButton then
-        Utils.AddSignal(closeButton.MouseButton1Click, function()
-            destroyNotification()
-        end)
-    end
-    
-    -- 自动关闭
-    if Notification.Duration > 0 then
-        task.delay(Notification.Duration, function()
-            destroyNotification()
-        end)
-    end
-    
-    local function destroyNotification()
-        Utils.Tween(notificationFrame, {
-            Position = UDim2.new(1, 20, 1, -100)
-        }, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In, function()
-            notificationFrame:Destroy()
-        end)
-    end
-    
-    return {
-        Destroy = destroyNotification
-    }
-end
-
--- 弹窗系统
-function NovaUI:Popup(config)
-    config = config or {}
-    
-    local Popup = {
-        Title = config.Title or "Popup",
-        Message = config.Message or "",
-        Buttons = config.Buttons or {{Text = "OK", Type = "Primary"}},
-        OnClose = config.OnClose or function() end
-    }
-    
-    local theme = ThemeSystem.Themes[ThemeSystem.Current]
-    
-    -- 创建遮罩层
-    local overlay = Utils.Create("Frame", {
-        Name = "PopupOverlay",
-        Size = UDim2.new(1, 0, 1, 0),
-        BackgroundColor3 = Color3.new(0, 0, 0),
-        BackgroundTransparency = 0.5,
-        ZIndex = 98,
-        Parent = Services.Players.LocalPlayer:WaitForChild("PlayerGui")
-    })
-    
-    -- 创建弹窗
-    local popupFrame = Utils.Create("Frame", {
-        Name = "Popup",
-        Size = UDim2.new(0, 400, 0, 200),
-        Position = UDim2.new(0.5, 0, 0.5, 0),
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        BackgroundTransparency = 1,
-        ZIndex = 99,
-        Parent = overlay
-    })
-    
-    local popupCard = Utils.RoundFrame(DesignSystem.Radius.LG, {
-        Name = "Card",
-        Size = UDim2.new(1, 0, 1, 0),
-        BackgroundColor3 = theme.Surface,
-        Parent = popupFrame
-    }, {
-        Utils.Create("UICorner", {
-            CornerRadius = UDim.new(0, DesignSystem.Radius.LG)
-        }),
-        
-        Utils.Create("UIStroke", {
-            Thickness = 1,
-            Color = theme.Border
-        }),
-        
-        -- 标题
-        Utils.Create("TextLabel", {
-            Name = "Title",
-            Text = Popup.Title,
-            TextColor3 = theme.Text.Primary,
-            TextSize = DesignSystem.Typography.Sizes.Heading,
-            Font = Font.fromName("SourceSansPro", Enum.FontWeight.SemiBold),
-            BackgroundTransparency = 1,
-            Size = UDim2.new(1, -DesignSystem.Spacing.XL * 2, 0, 40),
-            Position = UDim2.new(0, DesignSystem.Spacing.XL, 0, DesignSystem.Spacing.LG),
-            TextXAlignment = Enum.TextXAlignment.Left
-        }),
-        
-        -- 消息
-        Utils.Create("TextLabel", {
-            Name = "Message",
-            Text = Popup.Message,
-            TextColor3 = theme.Text.Secondary,
-            TextSize = DesignSystem.Typography.Sizes.Body,
-            Font = Font.fromName("SourceSansPro", Enum.FontWeight.Regular),
-            BackgroundTransparency = 1,
-            Size = UDim2.new(1, -DesignSystem.Spacing.XL * 2, 0, 80),
-            Position = UDim2.new(0, DesignSystem.Spacing.XL, 0, 64),
-            TextXAlignment = Enum.TextXAlignment.Left,
-            TextWrapped = true
-        }),
-        
-        -- 按钮容器
-        Utils.Create("Frame", {
-            Name = "Buttons",
-            Size = UDim2.new(1, -DesignSystem.Spacing.XL * 2, 0, 40),
-            Position = UDim2.new(0, DesignSystem.Spacing.XL, 1, -DesignSystem.Spacing.LG - 40),
-            BackgroundTransparency = 1
-        }, {
-            Utils.Create("UIListLayout", {
-                FillDirection = Enum.FillDirection.Horizontal,
-                HorizontalAlignment = Enum.HorizontalAlignment.Right,
-                Padding = UDim.new(0, DesignSystem.Spacing.SM)
-            })
-        })
-    })
-    
-    -- 创建按钮
-    local function createButton(text, buttonType, onClick)
-        local colorMap = {
-            Primary = theme.Primary,
-            Secondary = DesignSystem.Colors.Secondary,
-            Danger = DesignSystem.Colors.Danger
-        }
-        
-        local color = colorMap[buttonType] or theme.Primary
-        
-        local button = Utils.RoundFrame(DesignSystem.Radius.MD, {
-            Name = "Button_" .. text,
-            Size = UDim2.new(0, 80, 0, 32),
-            BackgroundColor3 = color,
-            Parent = popupCard.Buttons
-        }, {
-            Utils.Create("UICorner", {
-                CornerRadius = UDim.new(0, DesignSystem.Radius.MD)
-            }),
-            
-            Utils.Create("UIStroke", {
-                Thickness = 1,
-                Color = color:Lerp(Color3.new(0, 0, 0), 0.2),
-                Transparency = 0.5
-            }),
-            
-            Utils.Create("TextButton", {
-                Name = "Button",
-                Size = UDim2.new(1, 0, 1, 0),
-                BackgroundTransparency = 1,
-                Text = text,
-                TextColor3 = Color3.new(1, 1, 1),
-                TextSize = DesignSystem.Typography.Sizes.Body,
-                Font = Font.fromName("SourceSansPro", Enum.FontWeight.Medium),
-                AutoButtonColor = false
-            })
-        })
-        
-        local textButton = button:FindFirstChild("Button")
-        
-        -- 悬停效果
-        Utils.AddSignal(textButton.MouseEnter, function()
-            Utils.Tween(button, {
-                BackgroundColor3 = color:Lerp(Color3.new(1, 1, 1), 0.1)
-            }, 0.1)
-        end)
-        
-        Utils.AddSignal(textButton.MouseLeave, function()
-            Utils.Tween(button, {
-                BackgroundColor3 = color
-            }, 0.1)
-        end)
-        
-        -- 点击事件
-        Utils.AddSignal(textButton.MouseButton1Click, function()
-            closePopup()
-            if onClick then
-                onClick()
-            end
-        end)
-        
-        return button
-    end
-    
-    -- 添加按钮
-    for _, buttonConfig in ipairs(Popup.Buttons) do
-        createButton(buttonConfig.Text, buttonConfig.Type, buttonConfig.OnClick)
-    end
-    
-    -- 显示动画
-    popupFrame.Size = UDim2.new(0, 0, 0, 0)
-    
-    Utils.Tween(popupFrame, {
-        Size = UDim2.new(0, 400, 0, 200)
-    }, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-    
-    local function closePopup()
-        Utils.Tween(popupFrame, {
-            Size = UDim2.new(0, 0, 0, 0)
-        }, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In, function()
-            overlay:Destroy()
-            if Popup.OnClose then
-                Popup.OnClose()
-            end
-        end)
-    end
-    
-    -- 点击遮罩层关闭
-    Utils.AddSignal(overlay.InputBegan, function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            local mousePos = input.Position
-            local popupPos = popupFrame.AbsolutePosition
-            local popupSize = popupFrame.AbsoluteSize
-            
-            if not (mousePos.X >= popupPos.X and mousePos.X <= popupPos.X + popupSize.X and
-                   mousePos.Y >= popupPos.Y and mousePos.Y <= popupPos.Y + popupSize.Y) then
-                closePopup()
-            end
-        end
-    end)
-    
-    return {
-        Close = closePopup
-    }
-end
-
--- 设置主题
-function NovaUI:SetTheme(themeName)
-    if ThemeSystem.Themes[themeName] then
-        ThemeSystem.Current = themeName
-        return true
-    end
-    return false
-end
-
--- 获取当前主题
-function NovaUI:GetTheme()
-    return ThemeSystem.Current
-end
-
--- 获取所有主题
-function NovaUI:GetThemes()
-    local themes = {}
-    for name, _ in pairs(ThemeSystem.Themes) do
-        table.insert(themes, name)
-    end
-    return themes
-end
-
+-- 导出模块
 return NovaUI
